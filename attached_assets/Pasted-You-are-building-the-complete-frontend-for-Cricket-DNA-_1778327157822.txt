@@ -1,0 +1,519 @@
+You are building the complete frontend for "Cricket DNA" — a Next.js 14 React app 
+that clusters cricketers by HOW they play, not their position. The emotional anchor 
+of this entire project is Virat Kohli. Every design decision should reflect obsession, 
+precision, and the weight of greatness.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TECH STACK (frontend only — no backend)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Next.js 14 App Router
+- TypeScript
+- Tailwind CSS + shadcn/ui
+- Framer Motion (for scroll-based animations)
+- GSAP + ScrollTrigger (for stacking cards, horizontal scroll, sticky switches)
+- Recharts (radar charts, line charts)
+- Plotly.js (constellation scatter map)
+- All data is HARDCODED mock JSON — no API calls, no backend
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+COLOR PALETTE & DESIGN LANGUAGE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Background: #0a0a0a (near-black)
+Primary accent: #c0392b (Kohli red — Indian cricket red)
+Secondary accent: #d4a500 (gold — for records and achievements)
+Surface: #111111 and #1a1a1a
+Text primary: #f5f5f5
+Text muted: #888888
+Text dim: #444444
+Border: rgba(255,255,255,0.08)
+
+Design language: editorial dark. Think GQ meets ESPN Stats & Info.
+No gradients. No glassmorphism. No glow effects.
+Sharp typography. Tight spacing. Data-forward.
+Every number should feel like it carries weight.
+Font: Use next/font with Inter for body, a serif (Playfair Display or similar) 
+for Kohli hero headlines only.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PAGE 1: LANDING PAGE — app/page.tsx
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+This is a FULLY SCROLLABLE landing page. It must express deep passion for 
+Virat Kohli while introducing the Cricket DNA concept.
+
+SECTION 1 — HERO (full viewport height)
+- Background: pure #0a0a0a
+- A large ambient number "18" (Kohli's jersey) rendered in enormous serif font,
+  barely visible at 3% opacity, centered behind all content — acts as a watermark
+- ANIMATION: "Cinematic SlideUp Headline" effect
+  Words slide up from behind an invisible mask with cinematic ease on page load.
+  Implement with GSAP:
+    gsap.from('.hero-word', {
+      yPercent: 110,
+      duration: 1.1,
+      stagger: 0.08,
+      ease: 'power4.out',
+      delay: 0.3
+    })
+  Headline text (split into individual word spans):
+  "Not a batter. Not a captain. A standard."
+- Below headline: the Rolodex/slot machine text component cycling through words:
+  ["Precision", "Obsession", "Consistency", "Dominance", "Legacy"]
+  rendered inline as: "Cricket DNA measures [WORD]"
+  ANIMATION: Old word rotates 90° backward on X-axis, new word flips up from 
+  bottom. Container uses preserve-3d. Left-aligned, not centered.
+  CSS: transform-style: preserve-3d, perspective: 1000px on parent
+  Cycle every 2.2 seconds with GSAP timeline
+- Below that: a single line of muted text — 
+  "80 international centuries. 500+ matches. One archetype: The Pressure Architect."
+- CTA buttons: "Explore the Constellation →" and "Enter the Shrine ↗"
+- Bottom of hero: a thin horizontal rule + scroll indicator (animated bouncing dot)
+
+SECTION 2 — SCROLL JOURNEY LINE
+- An SVG vertical line that draws itself as the user scrolls down the page.
+  Implement with Framer Motion useScroll + useTransform:
+    const { scrollYProgress } = useScroll()
+    const pathLength = useTransform(scrollYProgress, [0, 1], [0, 1])
+  The line runs along the left edge of the content. Small dot markers appear at 
+  each section as the line reaches them.
+- First content below the line: the project hook in large text
+  "Music clustering groups songs by sound, ignoring genre."
+  "This groups cricketers by performance DNA, ignoring position."
+  These two sentences animate in staggered as the line reaches them.
+
+SECTION 3 — THE NUMBERS WALL (passion section)
+- Section heading (cinematic slide-up on scroll): "The Weight of 18"
+- A grid of 6 stat cards that animate in with staggered entrance:
+  Each card: large number (animated count-up with Framer Motion 
+  useInView + spring animation) + small label beneath
+  Stats to show:
+  • 80 — "Test & ODI Centuries Combined"
+  • 82.7 — "Batting Average in Successful ODI Chases"  
+  • 500+ — "International Matches Across Formats"
+  • 2016 — "The Year He Scored 973 runs in T20Is alone"
+  • 28 — "Consecutive innings averaging 50+ in Tests (2016-17)"
+  • 1 — "The archetype no algorithm predicted"
+  Count-up animation: start from 0, reach final value over 1.8s with ease-out
+  on enter viewport. Numbers in gold (#d4a500), labels in muted.
+
+SECTION 4 — STACKING CARDS EFFECT (what is Cricket DNA?)
+- Section uses GSAP ScrollTrigger stacking cards:
+  As user scrolls, cards stack sticky at the top — deck-of-cards effect.
+  Each card explains one concept:
+  Card 1 (red accent): "Every cricketer reduced to 20 numbers"
+    Subtext: "Dot ball %, yorker frequency, chasing average, pressure index..."
+  Card 2 (gold accent): "Clusters form naturally — no labels applied"
+    Subtext: "The algorithm doesn't know Kohli is a batter. It just knows the numbers."
+  Card 3 (white accent): "Archetypes emerge: The Pressure Architect"
+    Subtext: "Players who perform identically despite different teams, eras, nations."
+  Card 4 (dim accent): "Cross-era DNA twins discovered"
+    Subtext: "Is Jasprit Bumrah the same bowler as Lasith Malinga? The data says yes."
+  
+  GSAP implementation:
+    cards.forEach((card, i) => {
+      ScrollTrigger.create({
+        trigger: card,
+        start: 'top ' + (80 + i * 8) + 'px',
+        endTrigger: '.cards-section',
+        end: 'bottom top',
+        pin: true,
+        pinSpacing: false
+      })
+    })
+
+SECTION 5 — STICKY CONTENT SWITCH (the archetypes)
+- Split-screen: left side sticky heading, right side scrolls through archetypes
+  Left: "The Eight Archetypes" heading stays fixed, a thin red vertical bar
+  Right: 8 archetype cards scroll past, each updating the left side's subtitle
+  As each archetype scrolls into view, the left subtitle updates to that archetype name
+  
+  GSAP ScrollTrigger synchronization:
+    archetypes.forEach((arch, i) => {
+      ScrollTrigger.create({
+        trigger: arch.element,
+        start: 'top center',
+        onEnter: () => updateLeftSide(arch.name, arch.description)
+      })
+    })
+  
+  Archetypes mock data (hardcoded):
+  1. The Pressure Architect — Kohli, Tendulkar, Williamson
+  2. Explosive Death Specialist — Bumrah, Malinga, McGrath  
+  3. The Chaos Agent — AB de Villiers, early Dhoni
+  4. Build-Up Orchestrator — Dravid, Kallis
+  5. Spin Wizard — Warne, Muralitharan, Kumble
+  6. Dual-Threat Engine — Imran Khan, Botham
+  7. Powerplay Destroyer — Rohit, Gilchrist
+  8. DBSCAN Wildcard — Dhoni (fits no cluster — annotated specially)
+
+SECTION 6 — HORIZONTAL GALLERY (constellation teaser)
+- Lock vertical scroll, translate to horizontal movement
+  GSAP ScrollTrigger horizontal:
+    gsap.to('.gallery-track', {
+      x: () => -(galleryTrack.scrollWidth - window.innerWidth),
+      ease: 'none',
+      scrollTrigger: {
+        trigger: '.gallery-section',
+        start: 'top top',
+        end: () => '+=' + galleryTrack.scrollWidth,
+        scrub: 1,
+        pin: true
+      }
+    })
+  Content: 6 horizontal "player DNA cards" scrolling past:
+  Each card shows player name, archetype badge, and a small 6-axis radar sparkline
+  Players: Kohli, Bumrah, Rohit, Dhoni, Dravid, Tendulkar
+  Mock radar data hardcoded as arrays of 6 values
+
+SECTION 7 — GSAP HORIZONTAL SCROLL TEXT (the hook)
+- A single very long horizontal flowing sentence, ticker-tape style:
+  "In every delivery, discover the undeniable data of Cricket DNA — 
+   where Bumrah meets Malinga • and Kohli meets Tendulkar • 
+   across eras that never shared a field •"
+  Embed small SVG cricket ball icons inline as punctuation between phrases
+  GSAP horizontal scroll, scrubbed to vertical scroll progress
+
+SECTION 8 — THE KOHLI SHRINE TEASER (pre-footer CTA)
+- Full-width section, dark red background (#1a0505)
+- The ambient "18" watermark again, larger
+- Serif headline (Playfair Display): "He didn't just chase totals."
+  Second line: "He redefined what pressure looks like."
+- Below: 3 quick-fire stats in a row (no count-up, just appear):
+  "82* vs Pakistan · 2022 T20 World Cup"
+  "Highest ICC ranking ever achieved by an Indian batter"  
+  "The only player to average 50+ across all three formats simultaneously"
+- Large CTA button: "Enter the Virat Kohli Shrine →"
+  Button style: outlined, red border, white text, fills red on hover
+  Hover animation: border expands outward 2px, text slides right 4px
+
+SECTION 9 — FOOTER
+- Minimal. Dark. 
+- Left: "Cricket DNA" wordmark
+- Center: nav links — Constellation / Archetypes / Kohli Shrine / Battle Arena / DNA Search
+- Right: "Built by [your name] · Data: ESPN Cricinfo · No affiliation with BCCI"
+- A thin top border in red
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PAGE 2: VIRAT KOHLI SHRINE — app/kohli/page.tsx
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+This page is a monument. Not a stats page. A monument.
+Design principle: every section should feel like a reveal.
+
+HERO SECTION:
+- Full viewport, black background
+- Cinematic slide-up headline (same GSAP implementation as landing):
+  "VIRAT" on one line in massive serif (font-size: clamp(80px, 15vw, 180px))
+  "KOHLI" on the next line, same size
+  Both words animate up from mask individually
+- Below: thin gold line (width: 120px, height: 1px, #d4a500)
+  The line draws itself left to right using Framer Motion:
+    animate={{ width: '120px' }} transition={{ duration: 0.8, delay: 1.4 }}
+- DNA archetype badge: 
+  "◆ THE PRESSURE ARCHITECT — ARCHETYPE A"
+  Small caps, letter-spacing: 0.2em, color: #c0392b
+- Three ambient numbers float in the background at low opacity:
+  "18" (jersey), "80" (centuries), "500" (matches) — each at 2% opacity, 
+  positioned at different corners, font-size: 30vw, pointer-events: none
+
+STAT WALL SECTION:
+- 6 large stat blocks in a 3x2 grid
+  Each block: animated count-up number + label + thin bottom border
+  The Hyper-Speed loading state spinner shows briefly (0.8s) before each 
+  stat reveals — implement as a small inline spinner per card:
+  Spinner: rotating geometric shape (square rotating 45°/s), fades out as 
+  number counts up
+  Stats:
+  • 80 / "Centuries across Test and ODI cricket"
+  • 82.7 / "Batting average in successful ODI chases — highest ever"
+  • 500+ / "International appearances across all formats"  
+  • 12,040+ / "Test runs — still climbing"
+  • 0 / "ICC tournaments where he failed to perform (subjective but true)"
+  • 1 / "Cluster — he sits alone at the intersection"
+
+DNA CONSTELLATION CALLOUT SECTION:
+- A mock Plotly scatter plot (hardcoded data, no API)
+  ~30 grey dots scattered across the canvas
+  One red dot (Kohli) — larger, pulsing CSS animation:
+    @keyframes pulse { 0%,100% { r: 8; opacity: 1 } 50% { r: 12; opacity: 0.7 } }
+  On hover over the red dot: tooltip showing "Virat Kohli · Pressure Architect · 
+  Nearest DNA twin: KS Williamson"
+  Two nearby dots (Tendulkar, Williamson) glow slightly gold on hover of Kohli dot
+  Label below chart: "He doesn't just lead the cluster. He defines it."
+
+CONSISTENCY MACHINE — CAREER ARC SECTION:
+- Recharts LineChart, hardcoded mock data
+  3 lines: Test avg (blue), ODI avg (gold), T20 avg (red)
+  X-axis: years 2008–2024
+  Y-axis: batting average per year (mock plausible data)
+  Mock data shows the 2022 "slump period" as a dip, then massive spike in 2023
+  Add a shaded red band over 2022 labeled "Media declared him finished"
+  Add annotation pins (vertical dashed lines) for key moments:
+    2011: "World Cup win"
+    2016: "973 T20I runs in a calendar year" 
+    2019: "ICC Test ranking #1"
+    2023: "Century drought ends — 71st ODI ton"
+  
+  ANIMATION: Chart lines draw themselves using Recharts built-in animation 
+  (isAnimationActive={true}, animationDuration={2000}) triggered by useInView
+
+THE 2022 MOMENT SECTION — BALL BY BALL:
+- Full-width dark section, background #0d0808
+- Section title (cinematic slide-up): "82* · Melbourne · October 23, 2022"
+- Subtitle: "Pakistan needed one wicket. India needed 16 off 6. He was still there."
+- Horizontal timeline of balls. Each ball = a small block.
+  Blocks are colored:
+    dot = #1a1a1a (dark)
+    single = #333
+    boundary (4) = #185fa5 (blue)  
+    six = #c0392b (red)
+    wicket = #888 (grey, other end)
+  Ball sequence (hardcoded mock of the actual innings — simplified):
+  Over 1-3: dots, singles mix
+  Over 15: two boundaries in an over — blocks light up gold briefly
+  Over 18 (Haris Rauf): a SIX block, then another SIX block — 
+    animate these two blocks with a brief scale(1.4) + glow before settling
+    Label above: "THE MOMENT ↑"
+  Over 20 (Naseem Shah): final two sixes — label "82* · DONE ↑"
+  
+  Below timeline: two converging line chart lines
+    Required Run Rate — starts at 8, spikes to 16+ in final over (red line)
+    Actual Run Rate — tracks below, then surges to meet it (gold line)
+    They converge at the final point. A small dot marker at convergence labeled "Win"
+
+RECORD WALL SECTION:
+- 6 large cards in masonry/grid layout
+  Each card animates in with staggered entrance (Framer Motion, stagger 0.12s)
+  Card structure: 
+    - Large number (gold, 48px)
+    - Record name (white, 16px, font-weight 500)
+    - Context sentence (muted, 13px) — the devastating contextual line
+  Cards:
+  1. 82.7 / "ODI chase average" / "The next highest ever recorded is 58.3. The gap is not a difference. It's a different sport."
+  2. 80 / "International centuries" / "Sachin held this record for decades. Kohli is still playing."
+  3. 973 / "T20I runs in 2016" / "In a format where 40 is a good score. He averaged 106 that year."
+  4. 50+ / "Average maintained across ALL three formats simultaneously" / "No other batter in history has done this. Not one."
+  5. 0 / "Times he has averaged below 45 in a calendar year since 2011" / "Every year. Every format. The same answer."
+  6. 28 / "Consecutive test innings averaging 50+ (2016-17)" / "Statisticians stopped looking for comparisons. There weren't any."
+  Each card: hover lifts 4px (translateY(-4px)), border color shifts to gold
+
+DNA RADAR SECTION:
+- Recharts RadarChart, 8 axes:
+  Pressure Score, Chase Avg, Control %, Boundary %, Consistency Index, 
+  Big Match Differential, Phase 3 SR, Format Versatility
+  Kohli's data hardcoded as near-perfect values (8-10 out of 10 on each axis)
+  Dropdown to add comparison player — options: Tendulkar, Root, Williamson, Babar, Smith
+  Each has slightly different hardcoded radar values
+  When player is selected, second overlay line animates in (dashed, gold)
+  Legend below: Kohli (red solid) vs [Selected Player] (gold dashed)
+
+VIRAT v/s CTA SECTION:
+- Two-column split:
+  Left: Kohli stat summary card (compact — runs, avg, centuries)
+  Right: Mystery card — slightly blurred, dashed border, "?" in center
+  Below: text "Think someone can match him?"
+  Row of quick-pick pills: [Rohit Sharma] [Sachin Tendulkar] [Babar Azam] [Joe Root]
+  Each pill is a button — clicking routes to /battle?p2=[id]
+  Large outlined CTA: "CHOOSE YOUR CHALLENGER →"
+  Hover on CTA: border color animates from #c0392b to #d4a500 over 0.3s
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PAGE 3: BATTLE ARENA — app/battle/page.tsx
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Default state (no p2 selected):
+- Full-page player picker UI
+- Left column: Kohli card (locked, pre-filled)
+- Right column: search input + grid of player cards to pick from
+  Mock players: Rohit, Sachin, Babar, Root, Warner, Stokes, Maxwell, Williamson
+  Each player card: name, role badge, one key stat
+  Clicking a card "selects" it with a red border + checkmark animation
+  CTA appears: "Start the Battle →" — routes to /battle?p2=[selected]
+
+Battle state (p2 selected, mock data hardcoded per player combo):
+- Top: VS header
+  Left: "VIRAT KOHLI" with Indian flag emoji
+  Center: large "v/s" in serif, #c0392b
+  Right: "[Player Name]" with their flag
+  Animation: both player names slide in from their respective sides on mount
+
+MODULE 1 — INTERNATIONAL CAREER STATS TABLE:
+  3 sub-tabs: Test / ODI / T20I
+  Table rows: Matches | Runs | Average | Strike Rate | 100s | 50s | HS
+  Winner per row highlighted in red (Kohli) or gold (opponent)
+  Row-by-row stagger entrance animation (Framer Motion, 0.06s stagger)
+  Hardcode plausible stats for each comparison player
+
+MODULE 2 — IPL CAREER STATS:
+  Similar table: Matches | Runs | Average | SR | 6s | 4s | Seasons
+  Kohli: 252 matches, 7263 runs, avg 37.2, SR 130.7, 236 sixes
+  Other players: reasonable hardcoded numbers
+
+MODULE 3 — HEAD TO HEAD:
+  Big number display: "X wins when both played / Y wins"
+  If both are batters: shows innings where they both scored 50+ in same match
+  If bowler vs batter: shows balls faced / runs scored / dismissals
+  Hardcode 3-4 memorable match scenarios
+
+MODULE 4 — STATEMENT MOMENTS:
+  Timeline of 3-4 "statement innings" per player
+  Kohli always includes: 2022 T20 WC 82*, 2016 Asia Cup 82* vs Pak, 2011 WC 
+  Each moment card: match, score, context line ("Required rate was 16. He laughed.")
+  Framer Motion scroll entrance per card
+
+MODULE 5 — DNA FINGERPRINT OVERLAY:
+  Recharts RadarChart, same 8 axes as Kohli shrine
+  Both players overlaid
+  Shows DNA similarity score: "72% DNA match" — hardcoded per combo
+  Below: "Both cluster in: [Archetype Name]" or "Different archetypes — [A] vs [B]"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PAGE 4: CONSTELLATION — app/constellation/page.tsx
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Full-page Plotly scatter, dark theme
+- 60 hardcoded mock players as dots (x,y from mock t-SNE values, color by cluster)
+- Cluster color map:
+  Archetype A (Pressure Architect): #c0392b
+  Archetype B (Death Specialist): #185fa5
+  Archetype C (Chaos Agent): #d4a500
+  Archetype D (Build-Up): #0f6e56
+  Archetype E (Spin Wizard): #8b5cf6
+  Archetype F (Dual Threat): #f97316
+  Archetype G (Powerplay): #ec4899
+  Archetype H (Wildcard DBSCAN): #6b7280
+- Kohli dot: oversized (size: 20), red, pulsing
+- Search bar above chart: filters dots, non-matching dots fade to 10% opacity
+- Era filter pills: All / Pre-2000 / 2000-2015 / 2015-Present
+- Format filter pills: All / Test / ODI / T20
+- Hover tooltip: player name + archetype + "DNA twin: [name]"
+- Click dot: slides in a right-side panel with that player's full DNA card
+  Panel has radar chart + key stats + archetype explanation
+  Panel closes with X button
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PAGE 5: DNA SEARCH — app/search/page.tsx
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Clean centered layout
+- Large search input: "Find a player's DNA twin →"
+  Placeholder cycles through examples (Rolodex animation):
+  ["Jasprit Bumrah...", "Virat Kohli...", "MS Dhoni...", "Sachin Tendulkar..."]
+- On search: shows player card + top 5 DNA twins
+  Each twin card: name, similarity % (gold progress bar), archetype badge
+  Hardcode 4-5 player results for each of 8 pre-seeded players
+- Shareable card: "Share this DNA match" button
+  Generates a text summary card (no actual share API needed — just renders a 
+  formatted card the user can screenshot)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SHARED COMPONENTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+components/CinematicHeadline.tsx
+  Props: words: string[], delay?: number
+  Splits text into words, wraps each in overflow-hidden div, 
+  animates each word up with GSAP on mount/inView
+
+components/RolodexText.tsx  
+  Props: words: string[], prefix?: string
+  Slot machine flip animation, preserve-3d, left-aligned
+  cycles every 2.2s
+
+components/CountUpStat.tsx
+  Props: value: number, label: string, prefix?: string, suffix?: string
+  Framer Motion useInView triggers count-up from 0 to value
+  Spring animation, 1.8s duration
+
+components/DNARadar.tsx
+  Props: players: { name: string, values: number[], color: string }[]
+  Recharts RadarChart wrapper, dark themed, animated on mount
+
+components/ScrollJourneyLine.tsx
+  Framer Motion SVG line that draws based on useScroll progress
+  Left-edge positioned, dot markers at section boundaries
+
+components/HyperSpeedLoader.tsx
+  Inline micro-loader: rotating geometric square, fade in/out
+  Use before stats reveal (0.8s display, then fade out as content arrives)
+
+components/PlayerCard.tsx
+  Props: player object with name, role, archetype, stats, radarValues
+  Used in constellation panel, battle arena, DNA search results
+
+components/ArchetypeBadge.tsx
+  Props: archetype: string, color: string
+  Small pill badge with archetype label + colored left border
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+GLOBAL LAYOUT — app/layout.tsx
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Persistent navbar: height 52px, background rgba(10,10,10,0.95), 
+  backdrop-blur: 8px, border-bottom: 1px solid rgba(255,255,255,0.06)
+- Left: "◆ CRICKET DNA" wordmark — red dot, white text
+- Right: nav links — Constellation / Archetypes / Kohli / Battle / DNA Search
+  Active link: red underline (2px, animates in on route change)
+- Mobile: hamburger → full-screen nav overlay, black bg, links stack vertically
+- Page transitions: Framer Motion AnimatePresence, 
+  pages fade in (opacity 0→1, y: 12→0, duration 0.35s)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ANIMATION IMPLEMENTATION NOTES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Install: npm install gsap framer-motion recharts plotly.js react-plotly.js
+
+GSAP client-only: wrap all GSAP code in useEffect. 
+Import GSAP dynamically for Next.js SSR safety:
+  useEffect(() => {
+    const gsap = (await import('gsap')).default
+    const { ScrollTrigger } = await import('gsap/ScrollTrigger')
+    gsap.registerPlugin(ScrollTrigger)
+    // your GSAP code here
+  }, [])
+
+Framer Motion: use 'use client' directive on all animated components.
+useInView with { once: true, margin: '-100px' } for scroll-triggered animations.
+
+All GSAP ScrollTrigger components: add markers={false} in production,
+ensure ScrollTrigger.refresh() is called after page layout settles.
+
+For the Plotly constellation: use dynamic import with ssr: false:
+  const Plot = dynamic(() => import('react-plotly.js'), { ssr: false })
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+MOCK DATA FILE — lib/mockData.ts
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Export the following hardcoded objects:
+- PLAYERS: array of 60 player objects with 
+  { id, name, country, role, archetype, archetypeId, x, y, radarValues[8], 
+    testStats, odiStats, t20Stats, iplStats, dnaScore, dnaTwins[3] }
+- ARCHETYPES: array of 8 archetype objects with 
+  { id, name, color, description, centroidValues[8], examplePlayers[3] }
+- KOHLI_CAREER: yearly batting average data 2008-2024 for 3 formats
+- KOHLI_2022_KNOCK: ball-by-ball data for the Pakistan T20 WC innings
+- BATTLE_RESULTS: map of player-pair keys to pre-computed battle data
+
+The 60 players should include:
+Real names: Kohli, Rohit, Bumrah, Dhoni, Tendulkar, Dravid, Kumble, 
+Ganguly, Sehwag, Zaheer, Ashwin, Jadeja, Shami, Pant, Gill, Siraj,
+Warner, Smith, Ponting, McGrath, Warne, Gilchrist, Hayden,
+Root, Anderson, Stokes, Broad, Bairstow,
+Babar, Afridi, Akhtar, Younis,
+Malinga, Sangakkara, Jayawardene, Murali,
+De Villiers, Kallis, Steyn,
+Lara, Gayle, Holder,
+Kane Williamson, Boult, McCullum,
+Maxwell, Finch, Starc
+
+Invent plausible t-SNE x,y coordinates that put similar players close together.
+Cluster color-code matches archetype assignment.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BUILD ORDER
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. lib/mockData.ts (all data first)
+2. Shared components (CinematicHeadline, RolodexText, CountUpStat, DNARadar)
+3. app/layout.tsx (navbar + page transitions)
+4. app/page.tsx (landing — all 9 sections)
+5. app/kohli/page.tsx (shrine — all sections)
+6. app/constellation/page.tsx
+7. app/battle/page.tsx
+8. app/search/page.tsx
+
+Start with step 1. Output complete, runnable code for each file.
+Do not truncate. Do not use placeholder comments like "// rest of component here".
+Every component must be complete and functional.
