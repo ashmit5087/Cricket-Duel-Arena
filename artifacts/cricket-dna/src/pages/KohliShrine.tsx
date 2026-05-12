@@ -43,11 +43,39 @@ function HeroSection() {
   }, []);
 
   return (
-    <section className="relative min-h-screen bg-[#0a0a0a] flex flex-col items-center justify-center overflow-hidden" data-testid="kohli-hero">
-      <div className="absolute inset-0 pointer-events-none select-none overflow-hidden" aria-hidden>
-        <span style={{ position: "absolute", top: "-5%", left: "-5%", fontSize: "30vw", color: "rgba(255,255,255,0.018)", fontFamily: "Playfair Display,serif", fontWeight: 900, lineHeight: 1 }}>18</span>
-        <span style={{ position: "absolute", bottom: "5%", right: "-5%", fontSize: "28vw", color: "rgba(255,255,255,0.015)", fontFamily: "Playfair Display,serif", fontWeight: 900, lineHeight: 1 }}>80</span>
-        <span style={{ position: "absolute", top: "40%", right: "20%", fontSize: "22vw", color: "rgba(255,255,255,0.012)", fontFamily: "Playfair Display,serif", fontWeight: 900, lineHeight: 1 }}>500</span>
+    <section className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden" data-testid="kohli-hero">
+      {/* GIF background */}
+      <div className="absolute inset-0 z-0" aria-hidden>
+        <img
+          src="/kohli-bg.gif"
+          alt=""
+          className="absolute inset-0 w-full h-full object-cover object-center"
+          style={{ opacity: 0.55 }}
+        />
+        {/* Hard vignette — darkens edges, keeps centre readable */}
+        <div
+          className="absolute inset-0"
+          style={{
+            background: "radial-gradient(ellipse 80% 70% at 50% 40%, rgba(10,10,10,0.15) 0%, rgba(10,10,10,0.55) 50%, rgba(10,10,10,0.92) 100%)",
+          }}
+        />
+        {/* Bottom-to-top fade so text section is crisp */}
+        <div
+          className="absolute inset-0"
+          style={{
+            background: "linear-gradient(to bottom, rgba(10,10,10,0.3) 0%, rgba(10,10,10,0.6) 55%, rgba(10,10,10,1) 100%)",
+          }}
+        />
+        {/* Frosted-glass blur layer that intensifies near the text */}
+        <div
+          className="absolute inset-0"
+          style={{
+            backdropFilter: "blur(2px)",
+            WebkitBackdropFilter: "blur(2px)",
+            maskImage: "radial-gradient(ellipse 70% 60% at 50% 55%, transparent 30%, black 100%)",
+            WebkitMaskImage: "radial-gradient(ellipse 70% 60% at 50% 55%, transparent 30%, black 100%)",
+          }}
+        />
       </div>
 
       <div className="relative z-10 text-center px-4">
@@ -220,12 +248,13 @@ function ConstellationSpot() {
               <g key={i}>
                 {dot.isKohli ? (
                   <>
-                    <motion.circle
-                      cx={dot.x} cy={dot.y} r={dot.r + 6}
-                      fill="none" stroke="#c0392b" strokeWidth="1"
-                      animate={{ r: [dot.r + 6, dot.r + 14, dot.r + 6], opacity: [0.5, 0.2, 0.5] }}
+                    <motion.g
+                      style={{ transformOrigin: `${dot.x}px ${dot.y}px` }}
+                      animate={{ scale: [1, 1.6, 1], opacity: [0.5, 0.15, 0.5] }}
                       transition={{ repeat: Infinity, duration: 2 }}
-                    />
+                    >
+                      <circle cx={dot.x} cy={dot.y} r={dot.r + 6} fill="none" stroke="#c0392b" strokeWidth="1" />
+                    </motion.g>
                     <circle
                       cx={dot.x} cy={dot.y} r={dot.r}
                       fill={dot.color}

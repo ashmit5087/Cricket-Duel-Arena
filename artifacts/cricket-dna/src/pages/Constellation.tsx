@@ -155,12 +155,13 @@ export default function Constellation() {
                     data-testid={`dot-${player.id}`}
                   >
                     {isKohli && (
-                      <motion.circle
-                        cx={nx} cy={ny} r={baseR + 8}
-                        fill="none" stroke="#c0392b" strokeWidth="1.5"
-                        animate={{ r: [baseR + 8, baseR + 16, baseR + 8], opacity: [0.5, 0.2, 0.5] }}
+                      <motion.g
+                        style={{ transformOrigin: `${nx}px ${ny}px` }}
+                        animate={{ scale: [1, 1.7, 1], opacity: [0.5, 0.15, 0.5] }}
                         transition={{ repeat: Infinity, duration: 2 }}
-                      />
+                      >
+                        <circle cx={nx} cy={ny} r={baseR + 8} fill="none" stroke="#c0392b" strokeWidth="1.5" />
+                      </motion.g>
                     )}
                     {isSelected && (
                       <circle cx={nx} cy={ny} r={baseR + 5} fill="none" stroke="#fff" strokeWidth="1.5" opacity={0.6} />
