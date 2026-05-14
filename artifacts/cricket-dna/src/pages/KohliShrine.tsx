@@ -186,56 +186,103 @@ function StatWall() {
   useEffect(() => {
     if (inView) {
       [0, 1, 2, 3, 4, 5].forEach((i) => {
-        setTimeout(() => setSpinnerDone((p) => ({ ...p, [i]: true })), 800 + i * 100);
+        setTimeout(() => setSpinnerDone((p) => ({ ...p, [i]: true })), 600 + i * 120);
       });
     }
   }, [inView]);
 
   const stats = [
-    { value: 80, label: "Centuries across Test and ODI cricket" },
-    { value: 82.7, label: "Batting average in successful ODI chases — highest ever" },
-    { value: 500, suffix: "+", label: "International appearances across all formats" },
-    { value: 12040, suffix: "+", label: "Test runs — still climbing" },
-    { value: 0, label: "ICC tournaments where he failed to perform" },
-    { value: 1, label: "Cluster — he sits alone at the intersection" },
+    { value: 80, suffix: "", label: "International Centuries", accent: "#c0392b" },
+    { value: 82.7, suffix: "", label: "ODI Chase Average — Highest Ever", accent: "#d4a500" },
+    { value: 500, suffix: "+", label: "International Appearances", accent: "#c0392b" },
+    { value: 12040, suffix: "+", label: "Test Runs — Still Climbing", accent: "#d4a500" },
+    { value: 0, suffix: "", label: "ICC Tournaments Without Impact", accent: "#c0392b" },
+    { value: 1, suffix: "", label: "DNA Cluster — He Stands Alone", accent: "#d4a500" },
   ];
 
   return (
-    <section ref={ref} className="relative py-32 px-8 md:px-16" style={{ background: "rgba(5,5,5,0.82)" }} data-testid="stat-wall">
-      <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-3 gap-0 border border-white/5">
+    <section ref={ref} className="relative py-0" style={{ background: "rgba(4,4,4,0.90)" }} data-testid="stat-wall">
+      {/* Ghost KOHLI background */}
+      <div className="absolute inset-0 overflow-hidden select-none pointer-events-none flex items-center justify-center">
+        <span style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "min(55vw,520px)", color: "#c0392b", opacity: 0.022, letterSpacing: "-0.02em", lineHeight: 1 }}>
+          KOHLI
+        </span>
+      </div>
+
+      {/* Top label strip */}
+      <div className="relative flex items-center px-8 md:px-16 py-6 border-b border-white/4">
+        <div className="h-px w-5 bg-[#c0392b] mr-3" />
+        <span className="text-[8px] uppercase tracking-[0.4em] text-[#c0392b]">The Numbers Don't Lie</span>
+        <div className="h-px flex-1 ml-4 bg-white/4" />
+        <span className="text-[8px] uppercase tracking-[0.3em] text-[#262626] ml-4">Virat Kohli · India 🇮🇳</span>
+      </div>
+
+      <div className="relative grid grid-cols-2 md:grid-cols-3">
         {stats.map((s, i) => (
           <motion.div
             key={i}
-            className="p-8 border-b border-r border-white/5 relative"
-            initial={{ opacity: 0 }}
-            animate={inView ? { opacity: 1 } : {}}
-            transition={{ delay: i * 0.1 }}
+            className="relative py-12 px-8 md:px-10"
+            style={{ borderRight: i % 3 !== 2 ? "1px solid rgba(255,255,255,0.04)" : "none", borderBottom: i < 3 ? "1px solid rgba(255,255,255,0.04)" : "none" }}
+            initial={{ opacity: 0, y: 16 }}
+            animate={inView ? { opacity: 1, y: 0 } : {}}
+            transition={{ delay: i * 0.1, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
             data-testid={`stat-block-${i}`}
           >
+            {/* Left glow bar */}
+            <div className="absolute left-0 top-8 bottom-8 w-[3px]" style={{ background: s.accent, boxShadow: `0 0 12px ${s.accent}55` }} />
+
             <AnimatePresence>
               {!spinnerDone[i] && (
-                <motion.div
-                  className="absolute inset-0 flex items-center justify-center"
-                  exit={{ opacity: 0 }}
-                >
-                  <motion.div
-                    className="w-6 h-6 border border-[#c0392b]"
-                    animate={{ rotate: 360 }}
-                    transition={{ repeat: Infinity, duration: 0.8, ease: "linear" }}
-                  />
+                <motion.div className="absolute inset-0 flex items-center justify-center" exit={{ opacity: 0 }}>
+                  <motion.div className="w-5 h-5 border" style={{ borderColor: s.accent }} animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 0.8, ease: "linear" }} />
                 </motion.div>
               )}
             </AnimatePresence>
+
             <div className={`transition-opacity duration-500 ${spinnerDone[i] ? "opacity-100" : "opacity-0"}`}>
-              <div className="text-4xl md:text-5xl font-bold text-[#d4a500] mb-3 font-mono">
+              <div
+                style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "clamp(48px,6.5vw,76px)", letterSpacing: "0.03em", lineHeight: 1, color: s.accent, textShadow: `0 0 28px ${s.accent}35` }}
+              >
                 <CountUpStat value={s.value} suffix={s.suffix} />
               </div>
-              <div className="text-xs text-[#555] leading-relaxed">{s.label}</div>
+              <div className="text-[9px] text-[#3c3c3c] uppercase tracking-[0.2em] leading-relaxed mt-3 max-w-[180px]">{s.label}</div>
             </div>
           </motion.div>
         ))}
       </div>
     </section>
+  );
+}
+
+function QuoteStrip() {
+  const ref = useRef(null);
+  const inView = useInView(ref, { once: true, margin: "-60px" });
+  return (
+    <div ref={ref} className="relative py-16 px-8 md:px-16 overflow-hidden" style={{ background: "rgba(7,2,2,0.94)", borderTop: "1px solid rgba(192,57,43,0.15)", borderBottom: "1px solid rgba(192,57,43,0.15)" }}>
+      <div className="absolute inset-0" style={{ background: "linear-gradient(90deg, rgba(192,57,43,0.06) 0%, transparent 40%, transparent 60%, rgba(192,57,43,0.06) 100%)" }} />
+      <div className="relative max-w-5xl mx-auto">
+        <motion.div
+          className="flex items-start gap-5"
+          initial={{ opacity: 0, x: -20 }}
+          animate={inView ? { opacity: 1, x: 0 } : {}}
+          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+        >
+          <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 100, color: "#c0392b", lineHeight: 0.7, opacity: 0.4, flexShrink: 0 }}>"</div>
+          <div>
+            <p
+              style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "clamp(22px,4vw,46px)", letterSpacing: "0.04em", lineHeight: 1.15 }}
+              className="text-white mb-5"
+            >
+              Self-belief and hard work will always earn you success.
+            </p>
+            <div className="flex items-center gap-3">
+              <div className="h-px w-8 bg-[#c0392b]" />
+              <span className="text-[9px] uppercase tracking-[0.35em] text-[#c0392b]">Virat Kohli</span>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+    </div>
   );
 }
 
@@ -283,14 +330,21 @@ function ConstellationSpot() {
   return (
     <section ref={ref} className="relative py-32 px-8 md:px-16" style={{ background: "rgba(3,3,3,0.80)" }} data-testid="constellation-spot">
       <div className="max-w-5xl mx-auto">
-        <motion.h2
-          className="font-serif text-3xl md:text-4xl text-[#f5f5f5] mb-4"
-          initial={{ opacity: 0, y: 20 }}
-          animate={inView ? { opacity: 1, y: 0 } : {}}
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={inView ? { opacity: 1, x: 0 } : {}}
+          transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+          className="mb-10"
         >
-          DNA Constellation
-        </motion.h2>
-        <p className="text-[#555] text-sm mb-10">He doesn't just lead the cluster. He defines it.</p>
+          <div className="flex items-center gap-3 mb-2">
+            <div className="h-px w-5 bg-[#c0392b]" />
+            <span className="text-[8px] uppercase tracking-[0.35em] text-[#c0392b]">DNA Mapping</span>
+          </div>
+          <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "clamp(38px,6vw,64px)", letterSpacing: "0.04em", lineHeight: 1 }} className="text-white mb-3">
+            DNA Constellation
+          </h2>
+          <p className="text-[#2e2e2e] text-[10px] uppercase tracking-[0.22em]">He doesn't cluster. He isolates himself at the top.</p>
+        </motion.div>
 
         <div className="relative w-full overflow-x-auto">
           <svg width="700" height="350" viewBox="0 0 700 350" className="w-full" style={{ maxWidth: 700 }}>
@@ -351,8 +405,16 @@ function CareerArc() {
   return (
     <section ref={ref} className="relative py-32 px-8 md:px-16" style={{ background: "rgba(5,5,5,0.82)" }} data-testid="career-arc">
       <div className="max-w-5xl mx-auto">
-        <h2 className="font-serif text-3xl md:text-4xl text-[#f5f5f5] mb-2">Consistency Machine</h2>
-        <p className="text-[#555] text-sm mb-10">Career batting averages across formats (2008–2024)</p>
+        <div className="mb-10">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="h-px w-5 bg-[#d4a500]" />
+            <span className="text-[8px] uppercase tracking-[0.35em] text-[#d4a500]">Career Arc · 2008–2024</span>
+          </div>
+          <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "clamp(38px,6vw,64px)", letterSpacing: "0.04em", lineHeight: 1 }} className="text-white mb-3">
+            Consistency Is His Weapon
+          </h2>
+          <p className="text-[#2e2e2e] text-[10px] uppercase tracking-[0.22em]">Every year. Every format. The same answer.</p>
+        </div>
 
         {inView && (
           <ResponsiveContainer width="100%" height={320}>
@@ -405,16 +467,23 @@ function MCGMoment() {
   return (
     <section ref={ref} className="relative py-32 px-8 md:px-16" style={{ background: "rgba(8,4,4,0.85)" }} data-testid="mcg-moment">
       <div className="max-w-5xl mx-auto">
-        <motion.h2
-          className="font-serif text-3xl md:text-5xl text-[#f5f5f5] mb-3"
-          initial={{ opacity: 0, y: 20 }}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.7 }}
+          className="mb-12"
         >
-          82* · Melbourne · October 23, 2022
-        </motion.h2>
-        <p className="text-[#888] text-sm mb-12">
-          Pakistan needed one wicket. India needed 16 off 6. He was still there.
-        </p>
+          <div className="flex items-center gap-3 mb-3">
+            <div className="h-px w-5 bg-[#c0392b]" />
+            <span className="text-[8px] uppercase tracking-[0.35em] text-[#c0392b]">The Defining Moment</span>
+          </div>
+          <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "clamp(32px,5.5vw,64px)", letterSpacing: "0.04em", lineHeight: 1.05 }} className="text-white mb-4">
+            82* · Melbourne<br />October 23, 2022
+          </h2>
+          <p className="text-[#2e2e2e] text-[10px] uppercase tracking-[0.2em] max-w-lg">
+            Pakistan needed one wicket. India needed 16 off 6. He was still there.
+          </p>
+        </motion.div>
 
         <div className="flex flex-wrap gap-2 mb-8">
           {KOHLI_2022_KNOCK.map((ball, i) => {
@@ -628,8 +697,16 @@ function DNARadarSection() {
   return (
     <section ref={ref} className="relative py-32 px-8 md:px-16" style={{ background: "rgba(5,5,5,0.82)" }} data-testid="dna-radar">
       <div className="max-w-5xl mx-auto">
-        <h2 className="font-serif text-3xl md:text-4xl text-[#f5f5f5] mb-4">DNA Radar</h2>
-        <p className="text-[#555] text-sm mb-8">8-dimensional performance fingerprint</p>
+        <div className="mb-8">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="h-px w-5 bg-[#c0392b]" />
+            <span className="text-[8px] uppercase tracking-[0.35em] text-[#c0392b]">Performance Fingerprint</span>
+          </div>
+          <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "clamp(38px,6vw,64px)", letterSpacing: "0.04em", lineHeight: 1 }} className="text-white mb-3">
+            8 Dimensions. 1 Outlier.
+          </h2>
+          <p className="text-[#2e2e2e] text-[10px] uppercase tracking-[0.22em]">Put anyone against him. See what happens.</p>
+        </div>
 
         <div className="flex flex-wrap gap-2 mb-8">
           <button
@@ -675,61 +752,160 @@ function ChallengeCTA() {
   const kohli = PLAYERS.find((p) => p.id === "virat-kohli")!;
 
   const challengers = [
-    { id: "rohit-sharma", label: "Rohit Sharma" },
-    { id: "sachin-tendulkar", label: "Sachin Tendulkar" },
-    { id: "babar-azam", label: "Babar Azam" },
-    { id: "joe-root", label: "Joe Root" },
+    { id: "rohit-sharma", label: "Rohit Sharma", country: "India" },
+    { id: "sachin-tendulkar", label: "Sachin Tendulkar", country: "India" },
+    { id: "babar-azam", label: "Babar Azam", country: "Pakistan" },
+    { id: "joe-root", label: "Joe Root", country: "England" },
+    { id: "steve-smith", label: "Steve Smith", country: "Australia" },
+    { id: "kane-williamson", label: "Kane Williamson", country: "New Zealand" },
   ];
 
   return (
-    <section ref={ref} className="relative py-32 px-8 md:px-16" style={{ background: "rgba(3,3,3,0.80)" }} data-testid="challenge-cta">
-      <div className="max-w-5xl mx-auto grid md:grid-cols-2 gap-12 items-center">
-        <div>
-          <div className="border border-[#c0392b]/30 p-8" style={{ background: "#0d0505" }}>
-            <div className="text-xs text-[#c0392b] tracking-widest uppercase mb-4">Virat Kohli · India 🇮🇳</div>
-            <div className="font-serif text-3xl text-[#f5f5f5] mb-6">The Pressure Architect</div>
-            <div className="grid grid-cols-3 gap-4 text-center border-t border-white/5 pt-6">
+    <section ref={ref} className="relative" style={{ background: "rgba(3,3,3,0.88)" }} data-testid="challenge-cta">
+      {/* Fight poster top banner */}
+      <div
+        className="relative px-8 md:px-16 py-7 flex items-center justify-between"
+        style={{ borderTop: "1px solid rgba(192,57,43,0.25)", borderBottom: "1px solid rgba(192,57,43,0.12)", background: "rgba(192,57,43,0.05)" }}
+      >
+        <div className="flex items-center gap-4">
+          <div className="h-px w-5 bg-[#c0392b]" />
+          <span
+            style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "clamp(20px,4vw,40px)", letterSpacing: "0.06em" }}
+            className="text-[#c0392b]"
+          >
+            DNA Battle Arena
+          </span>
+        </div>
+        <span className="text-[8px] uppercase tracking-[0.35em] text-[#2a2a2a]">Kohli vs The World</span>
+      </div>
+
+      {/* Fight poster body */}
+      <div className="relative overflow-hidden" style={{ minHeight: 520 }}>
+        {/* Ghost "FIGHT" background text */}
+        <div className="absolute inset-0 flex items-center justify-center select-none pointer-events-none">
+          <span
+            style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "min(55vw,580px)", color: "#c0392b", opacity: 0.025, letterSpacing: "-0.02em", lineHeight: 1 }}
+          >
+            FIGHT
+          </span>
+        </div>
+
+        <div className="relative max-w-5xl mx-auto px-8 md:px-16 py-16 grid md:grid-cols-[1fr,100px,1fr] gap-0 items-center">
+          {/* Kohli card */}
+          <motion.div
+            initial={{ opacity: 0, x: -24 }}
+            animate={inView ? { opacity: 1, x: 0 } : {}}
+            transition={{ delay: 0.15, duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+            className="p-8"
+            style={{ border: "1px solid rgba(192,57,43,0.28)", background: "rgba(6,2,2,0.95)" }}
+          >
+            <div className="flex items-center gap-2 mb-5">
+              <div className="h-px w-4 bg-[#c0392b]" />
+              <span className="text-[7px] uppercase tracking-[0.4em] text-[#c0392b]">Locked In · Player 1</span>
+            </div>
+
+            <div
+              style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "clamp(38px,5.5vw,64px)", letterSpacing: "0.04em", lineHeight: 1 }}
+              className="text-white"
+            >
+              Virat
+            </div>
+            <div
+              style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "clamp(38px,5.5vw,64px)", letterSpacing: "0.04em", lineHeight: 1, WebkitTextStroke: "1.5px rgba(192,57,43,0.8)", color: "transparent" }}
+              className="mb-6"
+            >
+              Kohli
+            </div>
+
+            <div className="text-[8px] uppercase tracking-[0.2em] text-[#2a2a2a] mb-1">The Pressure Architect</div>
+            <div className="h-px bg-white/5 mb-5" />
+
+            <div className="grid grid-cols-3 gap-3 text-center">
               {[
                 { v: kohli.odiStats.runs.toLocaleString(), l: "ODI Runs" },
-                { v: kohli.odiStats.avg.toFixed(2), l: "Avg" },
-                { v: kohli.odiStats.hundreds.toString(), l: "100s" },
+                { v: kohli.odiStats.avg.toFixed(1), l: "Average" },
+                { v: kohli.odiStats.hundreds.toString(), l: "Centuries" },
               ].map((s) => (
                 <div key={s.l}>
-                  <div className="text-xl font-bold text-[#d4a500]">{s.v}</div>
-                  <div className="text-xs text-[#555] mt-1">{s.l}</div>
+                  <div
+                    style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "clamp(20px,3vw,28px)", letterSpacing: "0.03em" }}
+                    className="text-[#d4a500] leading-none mb-1"
+                  >
+                    {s.v}
+                  </div>
+                  <div className="text-[7px] text-[#333] uppercase tracking-[0.18em]">{s.l}</div>
                 </div>
               ))}
             </div>
-          </div>
-        </div>
+          </motion.div>
 
-        <div>
-          <div className="border border-white/10 p-8 relative" style={{ background: "#0d0d0d" }}>
-            <div className="absolute inset-0 flex items-center justify-center">
-              <span className="text-7xl text-[#333] font-bold select-none">?</span>
+          {/* VS */}
+          <motion.div
+            className="flex items-center justify-center py-8"
+            initial={{ opacity: 0, scale: 0.5 }}
+            animate={inView ? { opacity: 1, scale: 1 } : {}}
+            transition={{ delay: 0.35, type: "spring", stiffness: 220, damping: 14 }}
+          >
+            <div
+              style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "clamp(32px,5vw,60px)", letterSpacing: "0.12em", color: "#c0392b", textShadow: "0 0 40px rgba(192,57,43,0.55)", lineHeight: 1 }}
+            >
+              VS
             </div>
-            <div className="relative z-10">
-              <div className="text-xs text-[#555] tracking-widest uppercase mb-2">Think someone can match him?</div>
-              <div className="flex flex-wrap gap-2 mb-6 mt-4">
-                {challengers.map((c) => (
-                  <Link key={c.id} href={`/battle?p2=${c.id}`}>
-                    <button
-                      className="px-3 py-1.5 text-xs border border-white/10 text-[#888] hover:border-[#c0392b] hover:text-[#c0392b] transition-colors"
-                      data-testid={`challenger-${c.id}`}
-                    >
-                      {c.label}
-                    </button>
-                  </Link>
-                ))}
-              </div>
-              <Link href="/battle">
-                <button className="w-full py-3 text-sm font-semibold tracking-widest uppercase border-2 border-[#c0392b] text-white hover:bg-[#c0392b] transition-colors" data-testid="choose-challenger-btn">
-                  Choose Your Challenger →
-                </button>
-              </Link>
+          </motion.div>
+
+          {/* Challenger slot */}
+          <motion.div
+            initial={{ opacity: 0, x: 24 }}
+            animate={inView ? { opacity: 1, x: 0 } : {}}
+            transition={{ delay: 0.15, duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+            className="p-8"
+            style={{ border: "1px solid rgba(255,255,255,0.06)", background: "rgba(10,10,10,0.9)" }}
+          >
+            <div className="text-[7px] uppercase tracking-[0.4em] text-[#2a2a2a] mb-5">Choose Your Fighter</div>
+
+            <div className="space-y-2 mb-6">
+              {challengers.map((c) => (
+                <Link key={c.id} href={`/battle?p2=${c.id}`}>
+                  <motion.div
+                    className="flex items-center justify-between px-4 py-3 group cursor-pointer"
+                    style={{ border: "1px solid rgba(255,255,255,0.05)", background: "rgba(14,14,14,0.9)" }}
+                    whileHover={{ borderColor: "rgba(192,57,43,0.35)", x: 3 }}
+                    transition={{ duration: 0.12 }}
+                    data-testid={`challenger-${c.id}`}
+                  >
+                    <div>
+                      <div className="text-[11px] uppercase tracking-[0.15em] text-[#666] group-hover:text-white transition-colors duration-150">{c.label}</div>
+                      <div className="text-[8px] text-[#2a2a2a] uppercase tracking-wider mt-0.5">{c.country}</div>
+                    </div>
+                    <span className="text-[#c0392b] opacity-0 group-hover:opacity-100 transition-opacity text-sm">→</span>
+                  </motion.div>
+                </Link>
+              ))}
             </div>
-          </div>
+
+            <Link href="/battle">
+              <motion.button
+                className="w-full py-4 text-[10px] font-bold tracking-[0.3em] uppercase text-white"
+                style={{ background: "#c0392b" }}
+                whileHover={{ background: "#a93226" }}
+                transition={{ duration: 0.15 }}
+                data-testid="choose-challenger-btn"
+              >
+                Enter Battle Arena →
+              </motion.button>
+            </Link>
+          </motion.div>
         </div>
+      </div>
+
+      {/* Bottom signature strip */}
+      <div
+        className="px-8 md:px-16 py-5 flex items-center gap-4"
+        style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}
+      >
+        <span className="text-[7px] uppercase tracking-[0.4em] text-[#1c1c1c]">Cricket DNA · Powered by DNA Scoring</span>
+        <div className="h-px flex-1 bg-white/3" />
+        <span className="text-[7px] uppercase tracking-[0.4em] text-[#1c1c1c]">Only one survives</span>
       </div>
     </section>
   );
@@ -747,6 +923,7 @@ export default function KohliShrine() {
           overlayOpacity={0.82}
         />
         <StatWall />
+        <QuoteStrip />
         <ConstellationSpot />
         <CareerArc />
         <MCGMoment />
