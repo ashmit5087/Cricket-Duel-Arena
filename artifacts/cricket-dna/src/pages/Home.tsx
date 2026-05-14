@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { motion, useScroll, useTransform, useInView, animate } from "framer-motion";
-import { ARCHETYPES, PLAYERS } from "@/data/mockData";
+import { ARCHETYPES, PLAYERS, RADAR_AXES } from "@/data/mockData";
 
 function HeroSection() {
   const heroRef = useRef<HTMLDivElement>(null);
@@ -45,16 +45,18 @@ function HeroSection() {
       className="relative overflow-hidden flex flex-col items-start justify-center min-h-screen px-8 md:px-16 lg:px-24"
       data-testid="hero-section"
     >
-      <div className="absolute inset-0 z-0 pointer-events-none" aria-hidden>
-        <iframe
-          src="https://www.youtube.com/embed/videoseries?list=PLsEbSbMCbxS3o0FqnBV5IUVR7cEFQ_bnP&autoplay=1&mute=1&loop=1&controls=0&disablekb=1&modestbranding=1&playsinline=1&iv_load_policy=3"
-          title="Virat Kohli highlights"
-          frameBorder="0"
-          allow="autoplay; encrypted-media"
-          className="absolute"
-          style={{ top: "-20%", left: "-20%", width: "140%", height: "140%", opacity: 0.35, pointerEvents: "none" }}
-        />
-        <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, rgba(10,10,10,0.65) 0%, rgba(10,10,10,0.8) 50%, rgba(10,10,10,1) 100%)" }} />
+      <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden" aria-hidden>
+        <video
+          autoPlay
+          muted
+          loop
+          playsInline
+          className="absolute inset-0 w-full h-full object-cover"
+          style={{ opacity: 0.52 }}
+        >
+          <source src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260505_105838_084968f2-4415-42a4-971a-3bec54539549.mp4" type="video/mp4" />
+        </video>
+        <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, rgba(10,10,10,0.45) 0%, rgba(10,10,10,0.72) 50%, rgba(10,10,10,1) 100%)" }} />
       </div>
 
       <div className="absolute inset-0 flex items-center justify-center z-0 pointer-events-none select-none overflow-hidden" aria-hidden>
@@ -227,10 +229,11 @@ function StackingCards() {
       ScrollTrigger.create({
         trigger: section,
         start: "top top",
-        end: `+=${cards.length * 100}vh`,
+        end: `+=${cards.length * 150}vh`,
         pin: true,
         pinSpacing: true,
-        scrub: 1,
+        scrub: 1.5,
+        anticipatePin: 1,
         onUpdate(self) {
           const idx = Math.min(
             cards.length - 1,
@@ -416,7 +419,7 @@ function HorizontalGallery() {
           trigger: section,
           start: "top top",
           end: () => "+=" + (track.scrollWidth - window.innerWidth + 128),
-          scrub: 1,
+          scrub: 1.8,
           pin: true,
           anticipatePin: 1,
         },
@@ -437,43 +440,89 @@ function HorizontalGallery() {
         <h2 className="font-serif text-2xl text-[#f5f5f5]">Player Profiles</h2>
       </div>
 
-      <div ref={trackRef} className="gallery-track absolute top-0 left-0 flex items-center h-full gap-6 px-16 pt-20" style={{ willChange: "transform" }}>
+      <div ref={trackRef} className="gallery-track absolute top-0 left-0 flex items-center h-full gap-5 px-16 pt-20" style={{ willChange: "transform" }}>
         {showcasePlayers.map((player) => {
           const archetype = ARCHETYPES.find((a) => a.id === player.archetypeId);
+          const col = archetype?.color || "#c0392b";
+          const initials = player.name.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase();
           return (
             <div
               key={player.id}
-              className="shrink-0 w-72 h-96 border border-white/8 p-6 flex flex-col justify-between"
-              style={{ background: "#111" }}
+              className="shrink-0 relative overflow-hidden"
+              style={{ width: 300, height: 420, background: "linear-gradient(145deg,#0d0d0d 0%,#131313 100%)", border: `1px solid ${col}28` }}
               data-testid={`gallery-card-${player.id}`}
             >
-              <div>
-                <div className="text-xs mb-1 uppercase tracking-widest" style={{ color: archetype?.color || "#888" }}>
-                  Archetype {player.archetypeId}
-                </div>
-                <div className="font-serif text-2xl text-[#f5f5f5] mb-1">{player.name}</div>
-                <div className="text-xs text-[#555] mb-4">{player.country}</div>
-                <div className="inline-block text-xs px-2 py-0.5 border-l-2 border text-[#888] border-white/8" style={{ borderLeftColor: archetype?.color }}>
-                  {archetype?.name}
-                </div>
-              </div>
-              <div>
-                <div className="grid grid-cols-4 gap-2 mb-4">
-                  {player.radarValues.slice(0, 8).map((v, i) => (
-                    <div key={i} className="text-center">
-                      <div className="h-12 flex items-end justify-center mb-1">
-                        <div
-                          className="w-5 rounded-sm"
-                          style={{ height: `${(v / 100) * 48}px`, background: archetype?.color || "#c0392b", opacity: 0.7 }}
-                        />
-                      </div>
-                      <div className="text-[10px] text-[#555]">{v}</div>
+              {/* top accent line */}
+              <div className="absolute top-0 left-0 right-0 h-px" style={{ background: `linear-gradient(90deg,transparent,${col},transparent)` }} />
+              {/* corner glow */}
+              <div className="absolute -top-10 -right-10 w-28 h-28 rounded-full blur-2xl" style={{ background: col, opacity: 0.08 }} />
+
+              <div className="relative p-6 flex flex-col h-full">
+                {/* header row */}
+                <div className="flex items-start justify-between mb-5">
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[10px] uppercase tracking-[0.18em] mb-1.5 font-medium" style={{ color: col }}>
+                      {archetype?.name || "Unknown"}
                     </div>
-                  ))}
+                    <div className="font-serif text-xl text-[#f0f0f0] leading-snug">{player.name}</div>
+                    <div className="text-[11px] text-[#444] mt-1 tracking-wider">{player.country} {player.flag}</div>
+                  </div>
+                  <div
+                    className="shrink-0 w-9 h-9 flex items-center justify-center text-xs font-bold border ml-3"
+                    style={{ borderColor: `${col}50`, color: col, background: `${col}10`, fontFamily: "Inter, sans-serif", letterSpacing: "0.06em" }}
+                  >
+                    {initials}
+                  </div>
                 </div>
-                <div className="flex justify-between text-xs text-[#555]">
-                  <span>DNA Score</span>
-                  <span className="text-[#d4a500] font-bold">{player.dnaScore}</span>
+
+                {/* DNA score */}
+                <div className="mb-5">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-[9px] uppercase tracking-[0.18em] text-[#444]">DNA Score</span>
+                    <span className="text-sm font-bold font-mono" style={{ color: col }}>{player.dnaScore}</span>
+                  </div>
+                  <div className="h-px bg-[#1a1a1a] relative">
+                    <motion.div
+                      className="absolute top-0 left-0 h-full"
+                      style={{ background: col, boxShadow: `0 0 6px ${col}80` }}
+                      initial={{ width: 0 }}
+                      animate={{ width: `${player.dnaScore}%` }}
+                      transition={{ duration: 1.2, delay: 0.2, ease: "easeOut" }}
+                    />
+                  </div>
+                </div>
+
+                {/* stat bars */}
+                <div className="flex-1 space-y-2.5">
+                  {RADAR_AXES.slice(0, 6).map((axis, i) => {
+                    const val = player.radarValues[i] ?? 0;
+                    return (
+                      <div key={axis} className="flex items-center gap-2.5">
+                        <div className="text-[9px] text-[#3a3a3a] uppercase tracking-wide shrink-0" style={{ width: 72 }}>
+                          {axis}
+                        </div>
+                        <div className="flex-1 h-px bg-[#181818] relative">
+                          <div
+                            className="absolute top-0 left-0 h-full transition-all duration-700"
+                            style={{ width: `${val}%`, background: col, opacity: 0.65 }}
+                          />
+                        </div>
+                        <div className="text-[9px] text-[#3a3a3a] font-mono w-5 text-right">{val}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* footer */}
+                <div
+                  className="mt-4 pt-4 flex justify-between items-center border-t"
+                  style={{ borderColor: "rgba(255,255,255,0.04)" }}
+                >
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-1.5 h-1.5 rounded-full" style={{ background: col }} />
+                    <span className="text-[9px] uppercase tracking-[0.15em] text-[#2e2e2e]">Archetype {player.archetypeId}</span>
+                  </div>
+                  <span className="text-[9px] uppercase tracking-[0.15em] text-[#2e2e2e]">→ Match</span>
                 </div>
               </div>
             </div>

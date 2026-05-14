@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { motion, useInView, animate, AnimatePresence } from "framer-motion";
+import { VideoBackground } from "@/components/ui/VideoBackground";
 import { RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, ReferenceArea, Legend } from "recharts";
 import { KOHLI_CAREER, KOHLI_2022_KNOCK, PLAYERS, RADAR_AXES } from "@/data/mockData";
 
@@ -151,7 +152,7 @@ function StatWall() {
   ];
 
   return (
-    <section ref={ref} className="py-32 px-8 md:px-16 bg-[#080808]" data-testid="stat-wall">
+    <section ref={ref} className="relative py-32 px-8 md:px-16" style={{ background: "rgba(5,5,5,0.82)" }} data-testid="stat-wall">
       <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-3 gap-0 border border-white/5">
         {stats.map((s, i) => (
           <motion.div
@@ -231,7 +232,7 @@ function ConstellationSpot() {
   ];
 
   return (
-    <section ref={ref} className="py-32 px-8 md:px-16 bg-[#050505]" data-testid="constellation-spot">
+    <section ref={ref} className="relative py-32 px-8 md:px-16" style={{ background: "rgba(3,3,3,0.80)" }} data-testid="constellation-spot">
       <div className="max-w-5xl mx-auto">
         <motion.h2
           className="font-serif text-3xl md:text-4xl text-[#f5f5f5] mb-4"
@@ -299,7 +300,7 @@ function CareerArc() {
   const inView = useInView(ref, { once: true, margin: "-80px" });
 
   return (
-    <section ref={ref} className="py-32 px-8 md:px-16 bg-[#080808]" data-testid="career-arc">
+    <section ref={ref} className="relative py-32 px-8 md:px-16" style={{ background: "rgba(5,5,5,0.82)" }} data-testid="career-arc">
       <div className="max-w-5xl mx-auto">
         <h2 className="font-serif text-3xl md:text-4xl text-[#f5f5f5] mb-2">Consistency Machine</h2>
         <p className="text-[#555] text-sm mb-10">Career batting averages across formats (2008–2024)</p>
@@ -353,7 +354,7 @@ function MCGMoment() {
     ball.over === 18 && (ball.ball === 5 || ball.ball === 6);
 
   return (
-    <section ref={ref} className="py-32 px-8 md:px-16 bg-[#0d0808]" data-testid="mcg-moment">
+    <section ref={ref} className="relative py-32 px-8 md:px-16" style={{ background: "rgba(8,4,4,0.85)" }} data-testid="mcg-moment">
       <div className="max-w-5xl mx-auto">
         <motion.h2
           className="font-serif text-3xl md:text-5xl text-[#f5f5f5] mb-3"
@@ -446,23 +447,34 @@ function RecordWall() {
   ];
 
   return (
-    <section ref={ref} className="py-32 px-8 md:px-16 bg-[#050505]" data-testid="record-wall">
+    <section ref={ref} className="relative py-32 px-8 md:px-16" style={{ background: "rgba(3,3,3,0.82)" }} data-testid="record-wall">
       <div className="max-w-5xl mx-auto">
         <h2 className="font-serif text-3xl md:text-4xl text-[#f5f5f5] mb-12">The Record Wall</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {records.map((r, i) => (
             <motion.div
               key={i}
-              className="p-6 border border-white/5 hover:border-[#d4a500]/40 hover:-translate-y-1 transition-all duration-200"
-              style={{ background: "#0d0d0d" }}
-              initial={{ opacity: 0, y: 20 }}
+              className="relative overflow-hidden group cursor-default"
+              style={{ border: "1px solid rgba(212,165,0,0.12)", background: "linear-gradient(145deg,#0c0c0c,#101010)" }}
+              initial={{ opacity: 0, y: 24 }}
               animate={inView ? { opacity: 1, y: 0 } : {}}
-              transition={{ delay: i * 0.12 }}
+              transition={{ delay: i * 0.12, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+              whileHover={{ y: -3, borderColor: "rgba(212,165,0,0.35)" }}
               data-testid={`record-card-${i}`}
             >
-              <div className="text-4xl font-bold text-[#d4a500] mb-2">{r.value}</div>
-              <div className="text-[#f5f5f5] text-sm font-medium mb-3">{r.label}</div>
-              <div className="text-[#555] text-xs leading-relaxed border-t border-white/5 pt-3">{r.context}</div>
+              {/* Top accent */}
+              <div className="absolute top-0 left-0 right-0 h-px opacity-0 group-hover:opacity-100 transition-opacity duration-300" style={{ background: "linear-gradient(90deg,transparent,#d4a500,transparent)" }} />
+              <div className="p-6">
+                <div
+                  className="text-4xl md:text-5xl font-bold mb-1 font-mono tracking-tight"
+                  style={{ color: "#d4a500", textShadow: "0 0 20px rgba(212,165,0,0.25)" }}
+                >
+                  {r.value}
+                </div>
+                <div className="text-[#c0c0c0] text-sm font-medium mb-4 leading-snug">{r.label}</div>
+                <div className="h-px bg-white/5 mb-3" />
+                <div className="text-[#505050] text-xs leading-relaxed">{r.context}</div>
+              </div>
             </motion.div>
           ))}
         </div>
@@ -494,7 +506,7 @@ function DNARadarSection() {
   ];
 
   return (
-    <section ref={ref} className="py-32 px-8 md:px-16 bg-[#080808]" data-testid="dna-radar">
+    <section ref={ref} className="relative py-32 px-8 md:px-16" style={{ background: "rgba(5,5,5,0.82)" }} data-testid="dna-radar">
       <div className="max-w-5xl mx-auto">
         <h2 className="font-serif text-3xl md:text-4xl text-[#f5f5f5] mb-4">DNA Radar</h2>
         <p className="text-[#555] text-sm mb-8">8-dimensional performance fingerprint</p>
@@ -550,7 +562,7 @@ function ChallengeCTA() {
   ];
 
   return (
-    <section ref={ref} className="py-32 px-8 md:px-16 bg-[#050505]" data-testid="challenge-cta">
+    <section ref={ref} className="relative py-32 px-8 md:px-16" style={{ background: "rgba(3,3,3,0.80)" }} data-testid="challenge-cta">
       <div className="max-w-5xl mx-auto grid md:grid-cols-2 gap-12 items-center">
         <div>
           <div className="border border-[#c0392b]/30 p-8" style={{ background: "#0d0505" }}>
@@ -607,13 +619,21 @@ export default function KohliShrine() {
   return (
     <div className="bg-[#0a0a0a]" data-testid="kohli-shrine">
       <HeroSection />
-      <StatWall />
-      <ConstellationSpot />
-      <CareerArc />
-      <MCGMoment />
-      <RecordWall />
-      <DNARadarSection />
-      <ChallengeCTA />
+      {/* All sections below hero share a live video background */}
+      <div className="relative">
+        <VideoBackground
+          src="https://stream.mux.com/01yW6GoUz01OTXk5w1Rt1MHkJWlCGIwj46SUONJZ4DJUE.m3u8"
+          opacity={0.32}
+          overlayOpacity={0.82}
+        />
+        <StatWall />
+        <ConstellationSpot />
+        <CareerArc />
+        <MCGMoment />
+        <RecordWall />
+        <DNARadarSection />
+        <ChallengeCTA />
+      </div>
     </div>
   );
 }

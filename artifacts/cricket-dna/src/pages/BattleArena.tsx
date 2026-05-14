@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useLocation, Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
+import { VideoBackground } from "@/components/ui/VideoBackground";
 import { RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer, Legend } from "recharts";
 import { PLAYERS, BATTLE_RESULTS, ARCHETYPES, RADAR_AXES } from "@/data/mockData";
 
@@ -301,8 +302,13 @@ function BattleView({ p1Id, p2Id }: { p1Id: string; p2Id: string }) {
         )}
       </AnimatePresence>
 
-      <div className="min-h-screen bg-[#0a0a0a] pt-8 px-4 md:px-8" data-testid="battle-view">
-        <div className="max-w-6xl mx-auto">
+      <div className="relative min-h-screen pt-8 px-4 md:px-8" style={{ background: "#060606" }} data-testid="battle-view">
+        <VideoBackground
+          src="https://stream.mux.com/01yW6GoUz01OTXk5w1Rt1MHkJWlCGIwj46SUONJZ4DJUE.m3u8"
+          opacity={0.38}
+          overlayOpacity={0.8}
+        />
+        <div className="relative z-10 max-w-6xl mx-auto">
           <div className="grid grid-cols-3 items-center mb-8 gap-4">
             <div className="text-left" data-testid="p1-header">
               <div className="text-xs text-[#555] uppercase tracking-widest mb-1">Player 1</div>
@@ -383,8 +389,13 @@ function PlayerPicker({ onSelect }: { onSelect: (id: string) => void }) {
   const opponents = PLAYERS.filter((p) => p.id !== "virat-kohli").slice(0, 12);
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] py-16 px-4 md:px-8" data-testid="player-picker">
-      <div className="max-w-6xl mx-auto">
+    <div className="relative min-h-screen py-16 px-4 md:px-8" style={{ background: "#070707" }} data-testid="player-picker">
+      <VideoBackground
+        src="https://stream.mux.com/01yW6GoUz01OTXk5w1Rt1MHkJWlCGIwj46SUONJZ4DJUE.m3u8"
+        opacity={0.4}
+        overlayOpacity={0.78}
+      />
+      <div className="relative z-10 max-w-6xl mx-auto">
         <h1 className="font-serif text-4xl md:text-6xl text-[#f5f5f5] mb-2">Battle Arena</h1>
         <p className="text-[#555] text-sm mb-12">Select your challenger. Only one DNA survives.</p>
 
@@ -414,21 +425,42 @@ function PlayerPicker({ onSelect }: { onSelect: (id: string) => void }) {
             <div className="grid grid-cols-2 gap-3">
               {opponents.map((p) => {
                 const arch = ARCHETYPES.find((a) => a.id === p.archetypeId);
+                const col = arch?.color || "#c0392b";
+                const isSelected = selected === p.id;
                 return (
                   <button
                     key={p.id}
                     onClick={() => setSelected(p.id)}
-                    className={`p-4 text-left border transition-all duration-200 ${selected === p.id ? "border-[#c0392b] bg-[#0d0505]" : "border-white/5 bg-[#111] hover:border-white/20"}`}
+                    className="relative p-4 text-left transition-all duration-200 overflow-hidden group"
+                    style={{
+                      border: `1px solid ${isSelected ? col : "rgba(255,255,255,0.06)"}`,
+                      background: isSelected ? `${col}0d` : "#0c0c0c",
+                    }}
                     data-testid={`pick-${p.id}`}
                   >
-                    <div className="flex justify-between items-start mb-1">
-                      <div className="text-sm text-[#f5f5f5] font-medium leading-tight">{p.name}</div>
-                      <span className="text-lg">{p.flag}</span>
+                    {isSelected && (
+                      <div className="absolute top-0 left-0 right-0 h-px" style={{ background: `linear-gradient(90deg,transparent,${col},transparent)` }} />
+                    )}
+                    <div className="flex justify-between items-start mb-2">
+                      <div className="text-sm text-[#ebebeb] font-medium leading-tight pr-1">{p.name}</div>
+                      <span className="text-base leading-none shrink-0">{p.flag}</span>
                     </div>
-                    <div className="text-xs mt-1" style={{ color: arch?.color || "#888" }}>{arch?.name}</div>
-                    <div className="text-xs text-[#555] mt-2">DNA {p.dnaScore}</div>
-                    {selected === p.id && (
-                      <div className="mt-2 text-[#c0392b] text-xs">✓ Selected</div>
+                    <div className="text-[10px] uppercase tracking-wider mb-2.5" style={{ color: col }}>
+                      {arch?.name}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 h-px bg-[#1c1c1c] relative overflow-hidden">
+                        <div
+                          className="absolute top-0 left-0 h-full transition-all duration-500"
+                          style={{ width: isSelected ? `${p.dnaScore}%` : "0%", background: col, opacity: 0.7 }}
+                        />
+                      </div>
+                      <span className="text-[10px] font-mono shrink-0" style={{ color: col }}>{p.dnaScore}</span>
+                    </div>
+                    {isSelected && (
+                      <div className="mt-2.5 text-[9px] uppercase tracking-[0.2em]" style={{ color: col }}>
+                        ◆ Selected
+                      </div>
                     )}
                   </button>
                 );

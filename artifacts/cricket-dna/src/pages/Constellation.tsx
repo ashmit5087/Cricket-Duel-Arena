@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer } from "recharts";
 import { PLAYERS, ARCHETYPES, RADAR_AXES } from "@/data/mockData";
+import { VideoBackground } from "@/components/ui/VideoBackground";
 
 type Era = "all" | "pre2000" | "2000-2015" | "2015+";
 type Format = "all" | "test" | "odi" | "t20";
@@ -77,8 +78,13 @@ export default function Constellation() {
   })) : [];
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] py-16 px-4 md:px-8" data-testid="constellation-page">
-      <div className="max-w-6xl mx-auto">
+    <div className="relative min-h-screen bg-[#070707] py-16 px-4 md:px-8" data-testid="constellation-page">
+      <VideoBackground
+        src="https://stream.mux.com/Aa02T7oM1wH5Mk5EEVDYhbZ1ChcdhRsS2m1NYyx4Ua1g.m3u8"
+        opacity={0.38}
+        overlayOpacity={0.72}
+      />
+      <div className="relative z-10 max-w-6xl mx-auto">
         <h1 className="font-serif text-4xl md:text-5xl text-[#f5f5f5] mb-2">DNA Constellation</h1>
         <p className="text-[#555] text-sm mb-10">60 cricketers mapped by performance DNA. Clusters emerge naturally.</p>
 
