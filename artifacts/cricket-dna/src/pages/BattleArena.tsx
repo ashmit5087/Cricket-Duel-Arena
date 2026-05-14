@@ -99,91 +99,169 @@ function KOAnimation({ winner, loser, onDone }: { winner: string; loser: string;
   );
 }
 
-function FightIntro({ p1Name, p2Name, onDone }: { p1Name: string; p2Name: string; onDone: () => void }) {
-  const [phase, setPhase] = useState<"slide" | "vs" | "fight">("slide");
+function FightIntro({
+  p1, p1Arch, p2, p2Arch, onDone,
+}: {
+  p1: typeof PLAYERS[0];
+  p1Arch: typeof ARCHETYPES[0] | undefined;
+  p2: typeof PLAYERS[0];
+  p2Arch: typeof ARCHETYPES[0] | undefined;
+  onDone: () => void;
+}) {
+  const [phase, setPhase] = useState<"screen" | "vs" | "fight">("screen");
 
   useEffect(() => {
-    const t1 = setTimeout(() => setPhase("vs"), 800);
-    const t2 = setTimeout(() => setPhase("fight"), 1800);
-    const t3 = setTimeout(onDone, 2800);
+    const t1 = setTimeout(() => setPhase("vs"), 1700);
+    const t2 = setTimeout(() => setPhase("fight"), 2600);
+    const t3 = setTimeout(onDone, 3500);
     return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
   }, [onDone]);
 
+  const p1Col = "#c0392b";
+  const p2Col = p2Arch?.color || "#d4a500";
+
   return (
     <motion.div
-      className="fixed inset-0 z-40 bg-black flex items-center justify-center overflow-hidden"
+      className="fixed inset-0 z-40 overflow-hidden bg-black"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      exit={{ opacity: 0, transition: { duration: 0.3 } }}
+      exit={{ opacity: 0, transition: { duration: 0.35 } }}
     >
-      <div className="absolute inset-0 pointer-events-none">
-        {[...Array(20)].map((_, i) => (
+      {/* Split-screen panels */}
+      <div className="absolute inset-0 flex">
+        {/* P1 LEFT */}
+        <motion.div
+          className="flex-1 relative overflow-hidden flex items-end pb-16 px-10"
+          initial={{ x: "-100%" }}
+          animate={{ x: 0 }}
+          transition={{ type: "spring", stiffness: 110, damping: 20 }}
+          style={{ borderRight: `2px solid ${p1Col}50` }}
+        >
+          <div className="absolute inset-0" style={{ background: `radial-gradient(ellipse 90% 70% at 80% 65%, ${p1Col}22 0%, #000 75%)` }} />
+          {/* Ghost initials */}
+          <div
+            className="absolute inset-0 flex items-center justify-end select-none pointer-events-none overflow-hidden"
+            style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "min(38vw, 420px)", color: p1Col, opacity: 0.05, lineHeight: 1, paddingRight: 16 }}
+          >
+            {p1.name.split(" ").map((w: string) => w[0]).join("")}
+          </div>
+          {/* Scan line reveal */}
           <motion.div
-            key={i}
-            className="absolute w-1 h-1 rounded-full"
-            style={{
-              background: i % 2 === 0 ? "#c0392b" : "#d4a500",
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-            }}
-            animate={{ opacity: [0, 1, 0], scale: [0, 2, 0] }}
-            transition={{ duration: 0.6 + Math.random() * 0.4, delay: Math.random() * 2, repeat: 2 }}
+            className="absolute inset-x-0 pointer-events-none"
+            style={{ height: 80, background: `linear-gradient(to bottom, transparent, ${p1Col}18, transparent)` }}
+            initial={{ top: "-80px" }}
+            animate={{ top: "110%" }}
+            transition={{ duration: 0.9, delay: 0.15, ease: "easeIn" }}
           />
-        ))}
+          {/* Vertical label */}
+          <div
+            className="absolute left-3 top-1/2 text-[8px] uppercase tracking-[0.4em]"
+            style={{ writingMode: "vertical-rl", transform: "translateY(-50%) rotate(180deg)", color: `${p1Col}50` }}
+          >
+            Player One
+          </div>
+          <div>
+            <div className="text-[9px] uppercase tracking-[0.25em] mb-3" style={{ color: p1Col }}>{p1Arch?.name || "Archetype A"}</div>
+            <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "clamp(58px,10vw,120px)", letterSpacing: "0.03em", lineHeight: 1 }} className="text-white">
+              {p1.name.split(" ")[0]}
+            </div>
+            <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "clamp(58px,10vw,120px)", letterSpacing: "0.03em", lineHeight: 1, WebkitTextStroke: `2px ${p1Col}`, color: "transparent" }}>
+              {p1.name.split(" ").slice(1).join(" ")}
+            </div>
+            <div className="flex items-center gap-2 mt-4">
+              <div className="h-px w-6" style={{ background: p1Col }} />
+              <span className="text-[9px] uppercase tracking-wider text-[#555]">{p1.country}</span>
+              <span className="text-sm">{p1.flag}</span>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* P2 RIGHT */}
+        <motion.div
+          className="flex-1 relative overflow-hidden flex items-end pb-16 px-10 justify-end"
+          initial={{ x: "100%" }}
+          animate={{ x: 0 }}
+          transition={{ type: "spring", stiffness: 110, damping: 20 }}
+          style={{ borderLeft: `2px solid ${p2Col}50` }}
+        >
+          <div className="absolute inset-0" style={{ background: `radial-gradient(ellipse 90% 70% at 20% 65%, ${p2Col}18 0%, #000 75%)` }} />
+          <div
+            className="absolute inset-0 flex items-center justify-start select-none pointer-events-none overflow-hidden"
+            style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "min(38vw, 420px)", color: p2Col, opacity: 0.05, lineHeight: 1, paddingLeft: 16 }}
+          >
+            {p2.name.split(" ").map((w: string) => w[0]).join("")}
+          </div>
+          <motion.div
+            className="absolute inset-x-0 pointer-events-none"
+            style={{ height: 80, background: `linear-gradient(to bottom, transparent, ${p2Col}15, transparent)` }}
+            initial={{ top: "-80px" }}
+            animate={{ top: "110%" }}
+            transition={{ duration: 0.9, delay: 0.35, ease: "easeIn" }}
+          />
+          <div
+            className="absolute right-3 top-1/2 text-[8px] uppercase tracking-[0.4em]"
+            style={{ writingMode: "vertical-rl", transform: "translateY(-50%)", color: `${p2Col}50` }}
+          >
+            Player Two
+          </div>
+          <div className="text-right">
+            <div className="text-[9px] uppercase tracking-[0.25em] mb-3" style={{ color: p2Col }}>{p2Arch?.name || "Archetype B"}</div>
+            <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "clamp(58px,10vw,120px)", letterSpacing: "0.03em", lineHeight: 1 }} className="text-white">
+              {p2.name.split(" ")[0]}
+            </div>
+            <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "clamp(58px,10vw,120px)", letterSpacing: "0.03em", lineHeight: 1, WebkitTextStroke: `2px ${p2Col}`, color: "transparent" }}>
+              {p2.name.split(" ").slice(1).join(" ")}
+            </div>
+            <div className="flex items-center gap-2 mt-4 justify-end">
+              <span className="text-sm">{p2.flag}</span>
+              <span className="text-[9px] uppercase tracking-wider text-[#555]">{p2.country}</span>
+              <div className="h-px w-6" style={{ background: p2Col }} />
+            </div>
+          </div>
+        </motion.div>
       </div>
 
-      <div className="relative z-10 text-center w-full px-8">
-        <AnimatePresence mode="wait">
-          {phase === "slide" && (
-            <motion.div key="slide" className="flex items-center justify-between gap-8" initial={{ opacity: 1 }}>
-              <motion.div
-                className="text-left"
-                initial={{ x: -200, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                transition={{ type: "spring", stiffness: 150, damping: 18 }}
-              >
-                <div className="text-xs text-[#c0392b] tracking-widest uppercase mb-2">Player 1</div>
-                <div className="font-serif text-3xl md:text-5xl text-white">{p1Name}</div>
-              </motion.div>
-              <motion.div
-                className="text-right"
-                initial={{ x: 200, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                transition={{ type: "spring", stiffness: 150, damping: 18 }}
-              >
-                <div className="text-xs text-[#d4a500] tracking-widest uppercase mb-2">Player 2</div>
-                <div className="font-serif text-3xl md:text-5xl text-white">{p2Name}</div>
-              </motion.div>
-            </motion.div>
-          )}
+      {/* Global horizontal scan line */}
+      <motion.div
+        className="absolute inset-x-0 z-20 pointer-events-none"
+        style={{ height: 3, background: "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.7) 50%, transparent 100%)", boxShadow: "0 0 20px 4px rgba(255,255,255,0.2)" }}
+        initial={{ top: "-3px" }}
+        animate={{ top: "102%" }}
+        transition={{ duration: 1.4, delay: 0.05, ease: "easeIn" }}
+      />
 
-          {phase === "vs" && (
-            <motion.div
-              key="vs"
-              className="font-serif text-[#c0392b] leading-none"
-              style={{ fontSize: "clamp(80px,20vw,200px)", textShadow: "0 0 80px #c0392b" }}
-              initial={{ scale: 0, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ type: "spring", stiffness: 200, damping: 15 }}
-            >
+      {/* VS / FIGHT overlay */}
+      <AnimatePresence mode="wait">
+        {phase === "vs" && (
+          <motion.div
+            key="vs"
+            className="absolute inset-0 flex items-center justify-center pointer-events-none z-30"
+            initial={{ scale: 0.4, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 1.8, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 260, damping: 14 }}
+          >
+            <motion.div className="absolute inset-0 bg-white" initial={{ opacity: 0.8 }} animate={{ opacity: 0 }} transition={{ duration: 0.12 }} />
+            <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "clamp(90px,18vw,200px)", letterSpacing: "0.1em", color: "#c0392b", textShadow: "0 0 60px #c0392b, 0 0 120px #c0392b60", lineHeight: 1 }}>
               VS
-            </motion.div>
-          )}
-
-          {phase === "fight" && (
-            <motion.div
-              key="fight"
-              className="font-serif text-white leading-none"
-              style={{ fontSize: "clamp(60px,15vw,160px)", textShadow: "0 0 40px #fff, 0 0 80px #c0392b" }}
-              initial={{ y: -200, opacity: 0, rotate: -5 }}
-              animate={{ y: 0, opacity: 1, rotate: 0 }}
-              transition={{ type: "spring", stiffness: 300, damping: 20 }}
-            >
+            </div>
+          </motion.div>
+        )}
+        {phase === "fight" && (
+          <motion.div
+            key="fight"
+            className="absolute inset-0 flex items-center justify-center pointer-events-none z-30"
+            initial={{ y: "-25%", opacity: 0, scale: 1.2 }}
+            animate={{ y: 0, opacity: 1, scale: 1 }}
+            exit={{ y: "25%", opacity: 0 }}
+            transition={{ type: "spring", stiffness: 280, damping: 18 }}
+          >
+            <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "clamp(70px,14vw,170px)", letterSpacing: "0.06em", color: "#fff", textShadow: "0 0 40px rgba(255,255,255,0.9), 0 0 90px #c0392b", lineHeight: 1 }}>
               FIGHT!
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
@@ -292,7 +370,7 @@ function BattleView({ p1Id, p2Id }: { p1Id: string; p2Id: string }) {
     <>
       <AnimatePresence>
         {phase === "intro" && (
-          <FightIntro p1Name={p1.name} p2Name={p2.name} onDone={() => setPhase("fight")} />
+          <FightIntro p1={p1} p1Arch={p1Arch} p2={p2} p2Arch={p2Arch} onDone={() => setPhase("fight")} />
         )}
       </AnimatePresence>
 
@@ -309,46 +387,128 @@ function BattleView({ p1Id, p2Id }: { p1Id: string; p2Id: string }) {
           overlayOpacity={0.8}
         />
         <div className="relative z-10 max-w-6xl mx-auto">
-          <div className="grid grid-cols-3 items-center mb-8 gap-4">
-            <div className="text-left" data-testid="p1-header">
-              <div className="text-xs text-[#555] uppercase tracking-widest mb-1">Player 1</div>
-              <div className="font-serif text-2xl md:text-3xl text-[#f5f5f5]">{p1.name}</div>
-              <div className="text-xs text-[#c0392b] mt-1">{p1.country} {p1.flag}</div>
-              <div className="mt-2 h-2 w-full bg-[#1a1a1a] rounded overflow-hidden">
-                <motion.div
-                  className="h-full bg-[#c0392b] rounded"
-                  initial={{ width: 0 }}
-                  animate={{ width: `${p1.dnaScore}%` }}
-                  transition={{ duration: 1, delay: 0.5 }}
-                />
+
+          {/* ── Reference-image style split player header ── */}
+          <motion.div
+            className="relative w-full overflow-hidden flex mb-10"
+            style={{ height: 360, border: "1px solid rgba(255,255,255,0.06)" }}
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15, duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+          >
+            {/* P1 LEFT */}
+            <div className="flex-1 relative overflow-hidden flex items-end pb-8 pl-10 pr-4" data-testid="p1-header">
+              <div className="absolute inset-0" style={{ background: "linear-gradient(135deg, rgba(192,57,43,0.20) 0%, transparent 65%)" }} />
+              {/* Ghost initials */}
+              <div
+                className="absolute top-0 right-[-20px] bottom-0 flex items-center select-none pointer-events-none overflow-hidden"
+                style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "min(28vw,300px)", color: "#c0392b", opacity: 0.06, lineHeight: 1 }}
+              >
+                {p1.name.split(" ").map((w: string) => w[0]).join("")}
+              </div>
+              {/* Vertical label */}
+              <div
+                className="absolute left-3 top-1/2 text-[8px] uppercase tracking-[0.4em] text-[#c0392b]/25"
+                style={{ writingMode: "vertical-rl", transform: "translateY(-50%) rotate(180deg)" }}
+              >
+                Player One
+              </div>
+              <div>
+                <div className="text-[9px] uppercase tracking-[0.22em] mb-2 text-[#c0392b]">{p1Arch?.name}</div>
+                <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "clamp(44px,6.5vw,80px)", letterSpacing: "0.04em", lineHeight: 1 }} className="text-white">
+                  {p1.name.split(" ")[0]}
+                </div>
+                <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "clamp(44px,6.5vw,80px)", letterSpacing: "0.04em", lineHeight: 1, WebkitTextStroke: "1.5px rgba(192,57,43,0.75)", color: "transparent" }}>
+                  {p1.name.split(" ").slice(1).join(" ")}
+                </div>
+                <div className="flex items-center gap-2 mt-3">
+                  <div className="h-px w-5 bg-[#c0392b]" />
+                  <span className="text-[9px] text-[#4a4a4a] uppercase tracking-wider">{p1.country}</span>
+                  <span className="text-sm">{p1.flag}</span>
+                </div>
+                <div className="mt-3 flex items-center gap-2">
+                  <div className="relative h-[2px] w-24 bg-[#181818] overflow-hidden">
+                    <motion.div className="absolute inset-y-0 left-0 bg-[#c0392b]" style={{ boxShadow: "0 0 6px #c0392b" }} initial={{ width: 0 }} animate={{ width: `${p1.dnaScore}%` }} transition={{ duration: 1.1, delay: 0.5 }} />
+                  </div>
+                  <span className="text-xs font-mono font-bold text-[#c0392b]">{p1.dnaScore}</span>
+                </div>
               </div>
             </div>
 
-            <div className="text-center">
-              <div className="font-serif text-4xl md:text-6xl text-[#c0392b]" style={{ textShadow: "0 0 30px #c0392b50" }}>
-                v/s
+            {/* CENTER VS */}
+            <div className="relative shrink-0 flex flex-col items-center justify-center px-5" style={{ minWidth: 110 }}>
+              <div className="absolute inset-y-0 left-0 w-px bg-[#c0392b]/12" />
+              <div className="absolute inset-y-0 right-0 w-px" style={{ background: `${p2Arch?.color || "#d4a500"}18` }} />
+              <motion.div
+                style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "clamp(32px,5vw,56px)", letterSpacing: "0.1em", color: "#c0392b", textShadow: "0 0 30px #c0392b70", lineHeight: 1 }}
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ type: "spring", stiffness: 220, damping: 12, delay: 0.55 }}
+              >
+                VS
+              </motion.div>
+              {result && (
+                <motion.div className="mt-3 text-center" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.9 }}>
+                  <div className="text-[7px] uppercase tracking-[0.2em] text-[#2e2e2e] mb-0.5">DNA</div>
+                  <div className="text-base font-bold font-mono text-[#d4a500]">{result.dnaSimilarity}%</div>
+                  <div className="text-[7px] text-[#2e2e2e] uppercase tracking-wider">Match</div>
+                </motion.div>
+              )}
+            </div>
+
+            {/* P2 RIGHT */}
+            <div className="flex-1 relative overflow-hidden flex items-end pb-8 pr-10 pl-4 justify-end" data-testid="p2-header">
+              <div className="absolute inset-0" style={{ background: `linear-gradient(225deg, ${p2Arch?.color || "#d4a500"}16 0%, transparent 65%)` }} />
+              <div
+                className="absolute top-0 left-[-20px] bottom-0 flex items-center select-none pointer-events-none overflow-hidden"
+                style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "min(28vw,300px)", color: p2Arch?.color || "#d4a500", opacity: 0.06, lineHeight: 1 }}
+              >
+                {p2.name.split(" ").map((w: string) => w[0]).join("")}
+              </div>
+              <div
+                className="absolute right-3 top-1/2 text-[8px] uppercase tracking-[0.4em]"
+                style={{ writingMode: "vertical-rl", transform: "translateY(-50%)", color: `${p2Arch?.color || "#d4a500"}30` }}
+              >
+                Player Two
+              </div>
+              <div className="text-right">
+                <div className="text-[9px] uppercase tracking-[0.22em] mb-2" style={{ color: p2Arch?.color }}>{p2Arch?.name}</div>
+                <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "clamp(44px,6.5vw,80px)", letterSpacing: "0.04em", lineHeight: 1 }} className="text-white">
+                  {p2.name.split(" ")[0]}
+                </div>
+                <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "clamp(44px,6.5vw,80px)", letterSpacing: "0.04em", lineHeight: 1, WebkitTextStroke: `1.5px ${p2Arch?.color || "#d4a500"}70`, color: "transparent" }}>
+                  {p2.name.split(" ").slice(1).join(" ")}
+                </div>
+                <div className="flex items-center gap-2 mt-3 justify-end">
+                  <span className="text-sm">{p2.flag}</span>
+                  <span className="text-[9px] text-[#4a4a4a] uppercase tracking-wider">{p2.country}</span>
+                  <div className="h-px w-5" style={{ background: p2Arch?.color }} />
+                </div>
+                <div className="mt-3 flex items-center gap-2 justify-end">
+                  <span className="text-xs font-mono font-bold" style={{ color: p2Arch?.color }}>{p2.dnaScore}</span>
+                  <div className="relative h-[2px] w-24 bg-[#181818] overflow-hidden">
+                    <motion.div className="absolute inset-y-0 right-0" style={{ background: p2Arch?.color, boxShadow: `0 0 6px ${p2Arch?.color}` }} initial={{ width: 0 }} animate={{ width: `${p2.dnaScore}%` }} transition={{ duration: 1.1, delay: 0.5 }} />
+                  </div>
+                </div>
               </div>
             </div>
 
-            <div className="text-right" data-testid="p2-header">
-              <div className="text-xs text-[#555] uppercase tracking-widest mb-1">Player 2</div>
-              <div className="font-serif text-2xl md:text-3xl text-[#f5f5f5]">{p2.name}</div>
-              <div className="text-xs text-[#d4a500] mt-1">{p2.country} {p2.flag}</div>
-              <div className="mt-2 h-2 w-full bg-[#1a1a1a] rounded overflow-hidden">
-                <motion.div
-                  className="h-full bg-[#d4a500] rounded ml-auto"
-                  initial={{ width: 0 }}
-                  animate={{ width: `${p2.dnaScore}%` }}
-                  transition={{ duration: 1, delay: 0.5 }}
-                  style={{ transformOrigin: "right" }}
-                />
-              </div>
-            </div>
-          </div>
+            {/* Full-width scan line reveal */}
+            <motion.div
+              className="absolute inset-y-0 w-[2px] pointer-events-none z-20"
+              style={{ background: "linear-gradient(to bottom, transparent, rgba(255,255,255,0.7), transparent)", boxShadow: "0 0 20px 6px rgba(255,255,255,0.15)" }}
+              initial={{ left: "-2px" }}
+              animate={{ left: "102%" }}
+              transition={{ duration: 0.9, delay: 0.1, ease: "easeInOut" }}
+            />
+          </motion.div>
 
           {result && (
-            <div className="mb-8 border border-[#c0392b]/30 p-4 bg-[#0d0505] text-sm text-[#888]">
-              <span className="text-[#c0392b] font-bold">DNA Similarity: </span>{result.dnaSimilarity}% · {result.reason}
+            <div className="mb-6 flex items-center gap-4 px-4 py-3" style={{ border: "1px solid rgba(192,57,43,0.2)", background: "rgba(192,57,43,0.04)" }}>
+              <div className="h-px flex-1 bg-[#c0392b]/15" />
+              <span className="text-[10px] uppercase tracking-[0.2em] text-[#c0392b] font-bold">DNA Similarity: {result.dnaSimilarity}%</span>
+              <span className="text-[10px] text-[#444]">{result.reason}</span>
+              <div className="h-px flex-1 bg-[#c0392b]/15" />
             </div>
           )}
 

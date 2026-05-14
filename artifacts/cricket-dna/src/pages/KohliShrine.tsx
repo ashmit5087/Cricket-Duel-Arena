@@ -487,42 +487,113 @@ function RecordWall() {
   const inView = useInView(ref, { once: true, margin: "-80px" });
 
   const records = [
-    { value: "82.7", label: "ODI Chase Average", context: "The next highest ever recorded is 58.3. The gap is not a difference. It's a different sport." },
-    { value: "80", label: "International Centuries", context: "Sachin held this record for decades. Kohli is still playing." },
-    { value: "973", label: "T20I Runs in 2016", context: "In a format where 40 is a good score. He averaged 106 that year." },
-    { value: "50+", label: "Average across ALL three formats simultaneously", context: "No other batter in history has done this. Not one." },
-    { value: "0", label: "Times averaging below 45 in a calendar year since 2011", context: "Every year. Every format. The same answer." },
-    { value: "28", label: "Consecutive Test innings averaging 50+ (2016-17)", context: "Statisticians stopped looking for comparisons. There weren't any." },
+    {
+      value: "82.7",
+      label: "ODI Chase Average",
+      badge: "Unmatched",
+      sub: "Next best ever: 58.3",
+      color: "#c0392b",
+      context: "The next best ever is 58.3. That's not a gap. That's a different sport.",
+    },
+    {
+      value: "80",
+      label: "International Centuries",
+      badge: "Still Growing",
+      sub: "Sachin retired at 100",
+      color: "#d4a500",
+      context: "Sachin retired. Kohli is still playing. The number keeps climbing.",
+    },
+    {
+      value: "973",
+      label: "T20I Runs in 2016",
+      badge: "Unrepeated",
+      sub: "Avg 106 that year",
+      color: "#c0392b",
+      context: "One calendar year. A format where 40 is a good score.",
+    },
+    {
+      value: "50+",
+      label: "Avg across ALL formats simultaneously",
+      badge: "Unprecedented",
+      sub: "Only player in history",
+      color: "#d4a500",
+      context: "Test. ODI. T20. All three. Same time. No one else has done this.",
+    },
+    {
+      value: "0",
+      label: "ICC tournaments without impact",
+      badge: "Flawless",
+      sub: "2011 / 2013 / 2022",
+      color: "#c0392b",
+      context: "In the games that define legacies, he showed up every single time.",
+    },
+    {
+      value: "28",
+      label: "Consecutive Test innings avg 50+",
+      badge: "2016-17 Season",
+      sub: "Statisticians gave up",
+      color: "#d4a500",
+      context: "Analysts stopped searching for comparisons. There weren't any.",
+    },
   ];
 
   return (
     <section ref={ref} className="relative py-32 px-8 md:px-16" style={{ background: "rgba(3,3,3,0.82)" }} data-testid="record-wall">
       <div className="max-w-5xl mx-auto">
-        <h2 className="font-serif text-3xl md:text-4xl text-[#f5f5f5] mb-12">The Record Wall</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="mb-12">
+          <div className="flex items-center gap-4 mb-3">
+            <div className="h-px flex-1 max-w-[32px] bg-[#c0392b]" />
+            <span className="text-[9px] uppercase tracking-[0.3em] text-[#c0392b]">Virat Kohli</span>
+          </div>
+          <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", letterSpacing: "0.04em", fontSize: "clamp(40px,7vw,72px)", lineHeight: 1 }} className="text-white mb-2">
+            The Record Wall
+          </h2>
+          <p className="text-[#383838] text-xs uppercase tracking-[0.2em]">Numbers that rewrote what was possible</p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-0 border border-white/5">
           {records.map((r, i) => (
             <motion.div
               key={i}
-              className="relative overflow-hidden group cursor-default"
-              style={{ border: "1px solid rgba(212,165,0,0.12)", background: "linear-gradient(145deg,#0c0c0c,#101010)" }}
-              initial={{ opacity: 0, y: 24 }}
-              animate={inView ? { opacity: 1, y: 0 } : {}}
-              transition={{ delay: i * 0.12, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-              whileHover={{ y: -3, borderColor: "rgba(212,165,0,0.35)" }}
+              className="relative overflow-hidden group cursor-default border-b border-r border-white/5"
+              style={{ background: "#080808" }}
+              initial={{ opacity: 0 }}
+              animate={inView ? { opacity: 1 } : {}}
+              transition={{ delay: i * 0.1, duration: 0.5 }}
               data-testid={`record-card-${i}`}
             >
-              {/* Top accent */}
-              <div className="absolute top-0 left-0 right-0 h-px opacity-0 group-hover:opacity-100 transition-opacity duration-300" style={{ background: "linear-gradient(90deg,transparent,#d4a500,transparent)" }} />
-              <div className="p-6">
+              {/* Left color accent bar */}
+              <div className="absolute top-0 left-0 bottom-0 w-[3px]" style={{ background: r.color, boxShadow: `0 0 12px ${r.color}60` }} />
+              {/* Aggressive diagonal pattern */}
+              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-400" style={{ background: `linear-gradient(135deg, ${r.color}08 0%, transparent 50%)` }} />
+              <div className="p-6 pl-8">
+                {/* Badge */}
+                <div className="flex items-center justify-between mb-3">
+                  <span
+                    className="text-[8px] uppercase tracking-[0.25em] px-2 py-0.5 font-bold"
+                    style={{ color: r.color, border: `1px solid ${r.color}40`, background: `${r.color}10` }}
+                  >
+                    {r.badge}
+                  </span>
+                  <span className="text-[8px] uppercase tracking-[0.15em] text-[#2a2a2a]">{r.sub}</span>
+                </div>
+                {/* Big number */}
                 <div
-                  className="text-4xl md:text-5xl font-bold mb-1 font-mono tracking-tight"
-                  style={{ color: "#d4a500", textShadow: "0 0 20px rgba(212,165,0,0.25)" }}
+                  className="leading-none mb-2"
+                  style={{
+                    fontFamily: "'Bebas Neue', sans-serif",
+                    fontSize: "clamp(52px,7vw,76px)",
+                    letterSpacing: "0.02em",
+                    color: r.color,
+                    textShadow: `0 0 30px ${r.color}40`,
+                  }}
                 >
                   {r.value}
                 </div>
-                <div className="text-[#c0c0c0] text-sm font-medium mb-4 leading-snug">{r.label}</div>
-                <div className="h-px bg-white/5 mb-3" />
-                <div className="text-[#505050] text-xs leading-relaxed">{r.context}</div>
+                {/* Label */}
+                <div className="text-[#b0b0b0] text-[11px] font-medium uppercase tracking-wider leading-tight mb-4">{r.label}</div>
+                <div className="h-px mb-3" style={{ background: `${r.color}20` }} />
+                {/* Context */}
+                <div className="text-[#484848] text-[11px] leading-relaxed italic">"{r.context}"</div>
               </div>
             </motion.div>
           ))}
