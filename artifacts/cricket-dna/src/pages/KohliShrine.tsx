@@ -286,59 +286,60 @@ function QuoteStrip() {
   );
 }
 
+const ARCH_COLORS: Record<string, string> = {
+  A: "#c0392b", B: "#4a90e2", C: "#e67e22", D: "#27ae60",
+  E: "#9b59b6", F: "#1abc9c", G: "#d4a500", H: "#ff6b6b",
+};
+const ARCH_NAMES: Record<string, string> = {
+  A: "Pressure Architect", B: "Precision Missile", C: "Chaos Agent",
+  D: "Build-Up Orchestrator", E: "Spin Wizard", F: "Dual-Threat Engine",
+  G: "Powerplay Destroyer", H: "DBSCAN Wildcard",
+};
+
 function ConstellationSpot() {
   const ref = useRef(null);
   const inView = useInView(ref, { once: true, margin: "-80px" });
-  const [showTooltip, setShowTooltip] = useState(false);
+  const [hovered, setHovered] = useState<string | null>(null);
+  const [scanDone, setScanDone] = useState(false);
 
-  const dots = [
-    { x: 50, y: 50, r: 3, color: "#444", name: "Player" },
-    { x: 120, y: 80, r: 3, color: "#444" },
-    { x: 180, y: 45, r: 3, color: "#444" },
-    { x: 90, y: 130, r: 3, color: "#444" },
-    { x: 200, y: 120, r: 3, color: "#444" },
-    { x: 250, y: 60, r: 3, color: "#444" },
-    { x: 300, y: 90, r: 3, color: "#444" },
-    { x: 350, y: 50, r: 3, color: "#444" },
-    { x: 160, y: 170, r: 3, color: "#444" },
-    { x: 280, y: 150, r: 3, color: "#444" },
-    { x: 380, y: 110, r: 3, color: "#444" },
-    { x: 400, y: 170, r: 3, color: "#444" },
-    { x: 430, y: 80, r: 3, color: "#444" },
-    { x: 460, y: 140, r: 3, color: "#444" },
-    { x: 490, y: 65, r: 3, color: "#444" },
-    { x: 510, y: 130, r: 3, color: "#444" },
-    { x: 70, y: 200, r: 3, color: "#444" },
-    { x: 130, y: 250, r: 3, color: "#444" },
-    { x: 220, y: 220, r: 3, color: "#444" },
-    { x: 330, y: 210, r: 3, color: "#444" },
-    { x: 440, y: 220, r: 3, color: "#444" },
-    { x: 540, y: 200, r: 3, color: "#444" },
-    { x: 580, y: 100, r: 3, color: "#444" },
-    { x: 560, y: 170, r: 3, color: "#444" },
-    { x: 600, y: 200, r: 3, color: "#444" },
-    { x: 620, y: 140, r: 3, color: "#444" },
-    { x: 640, y: 80, r: 3, color: "#444" },
-    { x: 660, y: 160, r: 3, color: "#444" },
-    { x: 30, y: 280, r: 3, color: "#444" },
-    { x: 100, y: 310, r: 3, color: "#444" },
-    { x: 310, y: 260, r: 4, color: "#6b7280", name: "K.S. Williamson" },
-    { x: 290, y: 240, r: 4, color: "#6b7280", name: "Sachin Tendulkar" },
-    { x: 320, y: 140, r: 20, color: "#c0392b", name: "Virat Kohli", isKohli: true },
-  ];
+  useEffect(() => {
+    if (inView) setTimeout(() => setScanDone(true), 1000);
+  }, [inView]);
+
+  const W = 680, H = 360;
+  const padL = 56, padR = 20, padT = 24, padB = 52;
+  const plotW = W - padL - padR;
+  const plotH = H - padT - padB;
+
+  const batters = PLAYERS.filter((p) => p.odiStats.avg > 15 && p.odiStats.sr > 50);
+  const minAvg = 30, maxAvg = 62, minSR = 68, maxSR = 106;
+
+  const toX = (avg: number) => padL + Math.max(0, Math.min(1, (avg - minAvg) / (maxAvg - minAvg))) * plotW;
+  const toY = (sr: number) => padT + plotH - Math.max(0, Math.min(1, (sr - minSR) / (maxSR - minSR))) * plotH;
+
+  const kohli = PLAYERS.find((p) => p.id === "virat-kohli")!;
+  const kX = toX(kohli.odiStats.avg);
+  const kY = toY(kohli.odiStats.sr);
+  const twins = kohli.dnaTwins || [];
+
+  const hovP = batters.find((p) => p.id === hovered);
+  const avgTicks = [35, 40, 45, 50, 55, 60];
+  const srTicks = [75, 85, 95, 105];
 
   return (
-    <section ref={ref} className="relative py-32 px-8 md:px-16" style={{ background: "rgba(3,3,3,0.80)" }} data-testid="constellation-spot">
+    <section ref={ref} className="relative py-20 px-8 md:px-16" style={{ background: "rgba(3,3,3,0.88)" }} data-testid="constellation-spot">
       <div className="max-w-5xl mx-auto">
+
+        {/* Heading */}
         <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={inView ? { opacity: 1, x: 0 } : {}}
-          transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-          className="mb-10"
+          transition={{ duration: 0.7 }}
+          className="mb-8"
         >
           <div className="flex items-center gap-3 mb-2">
             <div className="h-px w-5 bg-[#c0392b]" />
-            <span className="text-[8px] uppercase tracking-[0.35em] text-[#c0392b]">DNA Mapping</span>
+            <span className="text-[8px] uppercase tracking-[0.35em] text-[#c0392b]">DNA Mapping · ODI Average vs Strike Rate</span>
           </div>
           <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "clamp(38px,6vw,64px)", letterSpacing: "0.04em", lineHeight: 1 }} className="text-white mb-3">
             DNA Constellation
@@ -346,52 +347,197 @@ function ConstellationSpot() {
           <p className="text-[#2e2e2e] text-[10px] uppercase tracking-[0.22em]">He doesn't cluster. He isolates himself at the top.</p>
         </motion.div>
 
-        <div className="relative w-full overflow-x-auto">
-          <svg width="700" height="350" viewBox="0 0 700 350" className="w-full" style={{ maxWidth: 700 }}>
-            {dots.map((dot, i) => (
-              <g key={i}>
-                {dot.isKohli ? (
-                  <>
-                    <motion.g
-                      style={{ transformOrigin: `${dot.x}px ${dot.y}px` }}
-                      animate={{ scale: [1, 1.6, 1], opacity: [0.5, 0.15, 0.5] }}
-                      transition={{ repeat: Infinity, duration: 2 }}
-                    >
-                      <circle cx={dot.x} cy={dot.y} r={dot.r + 6} fill="none" stroke="#c0392b" strokeWidth="1" />
-                    </motion.g>
-                    <circle
-                      cx={dot.x} cy={dot.y} r={dot.r}
-                      fill={dot.color}
-                      className="cursor-pointer"
-                      onMouseEnter={() => setShowTooltip(true)}
-                      onMouseLeave={() => setShowTooltip(false)}
-                    />
-                    {showTooltip && (
-                      <foreignObject x={dot.x + 15} y={dot.y - 40} width="200" height="80">
-                        <div className="bg-[#1a1a1a] border border-[#c0392b]/40 px-3 py-2 text-xs">
-                          <div className="text-white font-bold">Virat Kohli</div>
-                          <div className="text-[#888]">Pressure Architect</div>
-                          <div className="text-[#d4a500]">Nearest twin: K.S. Williamson</div>
-                        </div>
-                      </foreignObject>
-                    )}
-                  </>
-                ) : (
-                  <circle
-                    cx={dot.x} cy={dot.y} r={dot.r}
-                    fill={dot.color}
-                    opacity={dot.name ? 0.8 : 0.4}
-                  />
+        {/* Chart */}
+        <div className="relative" style={{ border: "1px solid rgba(255,255,255,0.06)", background: "rgba(4,4,4,0.97)" }}>
+
+          {/* Hover info panel */}
+          <AnimatePresence>
+            {hovP && (
+              <motion.div
+                className="absolute top-3 right-3 z-20 px-4 py-3 pointer-events-none"
+                style={{ background: "#0c0c0c", border: `1px solid ${ARCH_COLORS[hovP.archetypeId] || "#333"}40`, minWidth: 186 }}
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
+              >
+                <div className="text-[7px] uppercase tracking-[0.28em] mb-1.5" style={{ color: ARCH_COLORS[hovP.archetypeId] || "#888" }}>
+                  {ARCH_NAMES[hovP.archetypeId]}
+                </div>
+                <div className="text-sm font-bold text-white mb-2">{hovP.name} {hovP.flag}</div>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { l: "AVG", v: hovP.odiStats.avg.toFixed(1) },
+                    { l: "SR", v: hovP.odiStats.sr.toFixed(1) },
+                    { l: "DNA", v: hovP.dnaScore.toString() },
+                  ].map((s) => (
+                    <div key={s.l}>
+                      <div className="text-[7px] text-[#2a2a2a] uppercase tracking-wider">{s.l}</div>
+                      <div className="text-[11px] font-bold" style={{ color: ARCH_COLORS[hovP.archetypeId] || "#d4a500" }}>{s.v}</div>
+                    </div>
+                  ))}
+                </div>
+                {twins.includes(hovP.id) && (
+                  <div className="mt-2 pt-2" style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+                    <span className="text-[7px] uppercase tracking-[0.2em] text-[#c0392b]">◆ DNA Twin of Kohli</span>
+                  </div>
                 )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ display: "block" }}>
+
+            {/* Grid lines */}
+            {avgTicks.map((v) => (
+              <g key={`gx-${v}`}>
+                <line x1={toX(v)} y1={padT} x2={toX(v)} y2={padT + plotH} stroke="rgba(255,255,255,0.04)" strokeWidth="1" strokeDasharray="3 6" />
+                <text x={toX(v)} y={H - 6} textAnchor="middle" fill="rgba(255,255,255,0.18)" fontSize="8" fontFamily="monospace">{v}</text>
               </g>
             ))}
+            {srTicks.map((v) => (
+              <g key={`gy-${v}`}>
+                <line x1={padL} y1={toY(v)} x2={padL + plotW} y2={toY(v)} stroke="rgba(255,255,255,0.04)" strokeWidth="1" strokeDasharray="3 6" />
+                <text x={padL - 5} y={toY(v) + 3} textAnchor="end" fill="rgba(255,255,255,0.18)" fontSize="8" fontFamily="monospace">{v}</text>
+              </g>
+            ))}
+
+            {/* Axes */}
+            <line x1={padL} y1={padT + plotH} x2={padL + plotW} y2={padT + plotH} stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
+            <line x1={padL} y1={padT} x2={padL} y2={padT + plotH} stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
+
+            {/* Axis labels */}
+            <text x={padL + plotW / 2} y={H - 1} textAnchor="middle" fill="rgba(255,255,255,0.18)" fontSize="7.5" fontFamily="monospace" letterSpacing="2">ODI AVERAGE →</text>
+            <text x={10} y={padT + plotH / 2} textAnchor="middle" fill="rgba(255,255,255,0.18)" fontSize="7.5" fontFamily="monospace" letterSpacing="2" transform={`rotate(-90,10,${padT + plotH / 2})`}>STRIKE RATE ↑</text>
+
+            {/* Kohli zone highlight */}
+            <rect x={toX(54)} y={padT} width={toX(64) - toX(54)} height={plotH} fill="rgba(192,57,43,0.04)" />
+            <text x={toX(54) + 4} y={padT + 13} fill="rgba(192,57,43,0.2)" fontSize="7" fontFamily="monospace" letterSpacing="1">THE KOHLI ZONE</text>
+
+            {/* DNA twin connection lines */}
+            {scanDone && twins.map((tid: string, i: number) => {
+              const tp = batters.find((p) => p.id === tid);
+              if (!tp) return null;
+              return (
+                <motion.line
+                  key={tid}
+                  x1={kX} y1={kY}
+                  x2={toX(tp.odiStats.avg)} y2={toY(tp.odiStats.sr)}
+                  stroke="#c0392b"
+                  strokeWidth="1"
+                  strokeDasharray="4 4"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 0.28 }}
+                  transition={{ delay: i * 0.18, duration: 0.5 }}
+                />
+              );
+            })}
+
+            {/* Player dots */}
+            {batters.map((p, i) => {
+              if (p.id === kohli.id) return null;
+              const col = ARCH_COLORS[p.archetypeId] || "#555";
+              const r = 3 + (p.dnaScore / 100) * 3.5;
+              const x = toX(p.odiStats.avg);
+              const y = toY(p.odiStats.sr);
+              const isHov = hovered === p.id;
+              const isTwin = twins.includes(p.id);
+              return (
+                <motion.g
+                  key={p.id}
+                  initial={{ opacity: 0, scale: 0 }}
+                  animate={scanDone ? { opacity: 1, scale: 1 } : {}}
+                  transition={{ delay: 0.1 + i * 0.05, type: "spring", stiffness: 220, damping: 16 }}
+                  style={{ cursor: "pointer" }}
+                  onMouseEnter={() => setHovered(p.id)}
+                  onMouseLeave={() => setHovered(null)}
+                >
+                  {isHov && <circle cx={x} cy={y} r={r + 8} fill="none" stroke={col} strokeWidth="1" opacity={0.35} />}
+                  {isTwin && !isHov && (
+                    <motion.g
+                      style={{ transformOrigin: `${x}px ${y}px` }}
+                      animate={{ scale: [1, 1.9, 1], opacity: [0.3, 0.04, 0.3] }}
+                      transition={{ repeat: Infinity, duration: 2.8 }}
+                    >
+                      <circle cx={x} cy={y} r={r + 5} fill="none" stroke={col} strokeWidth="0.5" />
+                    </motion.g>
+                  )}
+                  <circle cx={x} cy={y} r={r} fill={col} opacity={isHov ? 1 : isTwin ? 0.85 : 0.5} />
+                  {(isTwin || isHov) && (
+                    <text x={x + r + 4} y={y + 3} fill={col} fontSize="8" fontFamily="monospace" opacity={0.75}>
+                      {p.name.split(" ").pop()}
+                    </text>
+                  )}
+                </motion.g>
+              );
+            })}
+
+            {/* Kohli */}
+            {scanDone && (
+              <motion.g
+                initial={{ opacity: 0, scale: 0 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ type: "spring", stiffness: 140, damping: 12, delay: 0.2 }}
+                onMouseEnter={() => setHovered("virat-kohli")}
+                onMouseLeave={() => setHovered(null)}
+                style={{ cursor: "pointer" }}
+              >
+                {[18, 27, 38].map((r, i) => (
+                  <motion.g
+                    key={r}
+                    style={{ transformOrigin: `${kX}px ${kY}px` }}
+                    animate={{ scale: [1, 1.45, 1], opacity: [0.35, 0.04, 0.35] }}
+                    transition={{ repeat: Infinity, duration: 3, delay: i * 0.65 }}
+                  >
+                    <circle cx={kX} cy={kY} r={r} fill="none" stroke="#c0392b" strokeWidth="1" />
+                  </motion.g>
+                ))}
+                <circle cx={kX} cy={kY} r={9} fill="#c0392b" style={{ filter: "drop-shadow(0 0 10px rgba(192,57,43,0.9))" }} />
+                <circle cx={kX} cy={kY} r={3.5} fill="white" opacity={0.65} />
+                <text x={kX + 14} y={kY - 8} fill="white" fontSize="10" fontFamily="'Bebas Neue',sans-serif" letterSpacing="1.5">KOHLI</text>
+                <text x={kX + 14} y={kY + 6} fill="#c0392b" fontSize="7.5" fontFamily="monospace">
+                  {kohli.odiStats.avg.toFixed(1)} avg · {kohli.odiStats.sr.toFixed(1)} sr
+                </text>
+              </motion.g>
+            )}
           </svg>
+
+          {/* Scan line overlay */}
+          {inView && !scanDone && (
+            <motion.div
+              className="absolute inset-y-0 w-[2px] pointer-events-none"
+              style={{ background: "linear-gradient(to bottom,transparent,rgba(255,255,255,0.85),transparent)", boxShadow: "0 0 18px 6px rgba(255,255,255,0.25)" }}
+              initial={{ left: 0 }}
+              animate={{ left: "100%" }}
+              transition={{ duration: 0.9, ease: "easeInOut" }}
+            />
+          )}
         </div>
 
-        <div className="flex gap-6 mt-6 text-xs text-[#555]">
-          <span className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-[#c0392b] inline-block" /> Virat Kohli (Archetype A)</span>
-          <span className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-[#6b7280] inline-block" /> DNA Twins</span>
-          <span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-[#444] inline-block" /> Other players</span>
+        {/* Legend */}
+        <div className="flex flex-wrap gap-x-5 gap-y-2 mt-5">
+          {Object.entries(ARCH_NAMES).map(([id, name]) => (
+            <div key={id} className="flex items-center gap-1.5">
+              <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: ARCH_COLORS[id] }} />
+              <span className="text-[7.5px] uppercase tracking-[0.18em] text-[#252525]">{name}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Insight callouts */}
+        <div className="grid grid-cols-3 gap-0 mt-5" style={{ border: "1px solid rgba(255,255,255,0.05)" }}>
+          {[
+            { label: "ODI Average", value: kohli.odiStats.avg.toFixed(2), note: "Highest avg among batters charted", accent: "#c0392b" },
+            { label: "DNA Score", value: String(kohli.dnaScore), note: "Outlier across all 8 dimensions", accent: "#d4a500" },
+            { label: "DNA Twins", value: String(kohli.dnaTwins.length), note: "Root · Williamson · Babar", accent: "#c0392b" },
+          ].map((c, i) => (
+            <div key={c.label} className="px-6 py-5 relative" style={{ borderRight: i < 2 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
+              <div className="absolute left-0 top-4 bottom-4 w-[2px]" style={{ background: c.accent, boxShadow: `0 0 6px ${c.accent}50` }} />
+              <div className="text-[7px] uppercase tracking-[0.25em] text-[#222] mb-1">{c.label}</div>
+              <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 32, color: c.accent, lineHeight: 1 }} className="mb-1">{c.value}</div>
+              <div className="text-[7px] text-[#1c1c1c] uppercase tracking-wider">{c.note}</div>
+            </div>
+          ))}
         </div>
       </div>
     </section>
@@ -911,6 +1057,150 @@ function ChallengeCTA() {
   );
 }
 
+function CareerTimeline() {
+  const ref = useRef(null);
+  const inView = useInView(ref, { once: true, margin: "-80px" });
+
+  const knocks = [
+    {
+      year: "2011", runs: 107, balls: 100, notOut: false,
+      vs: "Sri Lanka", format: "ODI", venue: "Delhi", event: "Asia Cup",
+      sr: 107.0, fours: 10, sixes: 1,
+      tagline: "THE ARRIVAL",
+      context: "The innings that told the world — this is a different kind of Indian batter. Calculated. Fearless. Mature beyond his years.",
+      color: "#d4a500",
+    },
+    {
+      year: "2012", runs: 183, balls: 148, notOut: false,
+      vs: "Pakistan", format: "ODI", venue: "Mirpur", event: "Asia Cup",
+      sr: 123.6, fours: 22, sixes: 1,
+      tagline: "THE STATEMENT",
+      context: "India chased 330. He walked out at 0/1 and didn't leave until he had 183. First he made it easy. Then he made it art.",
+      color: "#c0392b",
+    },
+    {
+      year: "2019", runs: 254, balls: 336, notOut: true,
+      vs: "South Africa", format: "Test", venue: "Pune", event: "Freedom Series",
+      sr: 75.6, fours: 33, sixes: 1,
+      tagline: "THE CROWN JEWEL",
+      context: "His highest Test score. 10 hours at the crease. South Africa had no answer. Nobody did. Pure, undiluted Kohli.",
+      color: "#d4a500",
+    },
+    {
+      year: "2022", runs: 82, balls: 53, notOut: true,
+      vs: "Pakistan", format: "T20I", venue: "Melbourne", event: "T20 World Cup",
+      sr: 154.7, fours: 4, sixes: 6,
+      tagline: "THE MCG MIRACLE",
+      context: "16 needed off Haris Rauf's last over. He ended it in 4 balls. A six off the penultimate delivery. A six off the last.",
+      color: "#c0392b",
+    },
+    {
+      year: "2023", runs: 166, balls: 110, notOut: false,
+      vs: "New Zealand", format: "ODI", venue: "Shrinagar", event: "ODI Series",
+      sr: 150.9, fours: 13, sixes: 7,
+      tagline: "THE COMEBACK",
+      context: "After years of drought, he walked in and dismantled New Zealand as if he'd never left. The king returned.",
+      color: "#d4a500",
+    },
+  ];
+
+  return (
+    <section ref={ref} className="relative" style={{ background: "rgba(2,2,2,0.92)" }} data-testid="career-timeline">
+      <div className="px-8 md:px-16 pt-20 pb-4 max-w-5xl mx-auto">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="h-px w-5 bg-[#d4a500]" />
+          <span className="text-[8px] uppercase tracking-[0.35em] text-[#d4a500]">Biggest Knocks · 2011–2023</span>
+        </div>
+        <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "clamp(38px,6vw,64px)", letterSpacing: "0.04em", lineHeight: 1 }} className="text-white mb-3">
+          When It Mattered Most
+        </h2>
+        <p className="text-[#282828] text-[10px] uppercase tracking-[0.22em] mb-2">Five innings that redefined what was possible</p>
+      </div>
+
+      {/* Horizontal scroll rail */}
+      <div
+        className="overflow-x-auto"
+        style={{ scrollbarWidth: "none", msOverflowStyle: "none" } as React.CSSProperties}
+      >
+        <div className="flex pb-12 px-8 md:px-16" style={{ width: "max-content" }}>
+          {knocks.map((k, i) => (
+            <motion.div
+              key={i}
+              className="relative flex-shrink-0 group"
+              style={{ width: 276, borderRight: "1px solid rgba(255,255,255,0.05)" }}
+              initial={{ opacity: 0, y: 24 }}
+              animate={inView ? { opacity: 1, y: 0 } : {}}
+              transition={{ delay: i * 0.1, duration: 0.65, ease: [0.16, 1, 0.3, 1] }}
+            >
+              {/* Top color bar */}
+              <div className="h-[3px]" style={{ background: k.color, boxShadow: `0 0 12px ${k.color}55` }} />
+
+              <div className="p-7">
+                {/* Year ghost + format pill */}
+                <div className="flex items-start justify-between mb-3">
+                  <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 52, color: k.color, opacity: 0.11, lineHeight: 1, userSelect: "none" }}>
+                    {k.year}
+                  </span>
+                  <span
+                    className="text-[7px] uppercase tracking-[0.2em] px-2 py-0.5 mt-1.5 flex-shrink-0"
+                    style={{ border: `1px solid ${k.color}45`, color: k.color, background: `${k.color}09` }}
+                  >
+                    {k.format}
+                  </span>
+                </div>
+
+                {/* Score — the hero number */}
+                <div
+                  style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: "clamp(76px,9vw,100px)", letterSpacing: "0.01em", lineHeight: 0.88, color: k.color, textShadow: `0 0 40px ${k.color}22` }}
+                  className="mb-2"
+                >
+                  {k.runs}{k.notOut ? "*" : ""}
+                </div>
+                <div className="text-[8.5px] text-[#242424] uppercase tracking-[0.2em] mb-4">
+                  {k.balls} balls · SR {k.sr}
+                </div>
+
+                {/* Opposition */}
+                <div className="text-[11px] text-[#525252] mb-0.5">vs {k.vs}</div>
+                <div className="text-[8px] text-[#282828] uppercase tracking-wider mb-5">{k.event} · {k.venue}</div>
+
+                {/* Stats row */}
+                <div className="flex items-end gap-5 py-3.5" style={{ borderTop: "1px solid rgba(255,255,255,0.04)", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                  {[
+                    { l: "4s", v: k.fours },
+                    { l: "6s", v: k.sixes },
+                  ].map((s) => (
+                    <div key={s.l}>
+                      <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 26, color: k.color, lineHeight: 1 }}>{s.v}</div>
+                      <div className="text-[7px] text-[#222] uppercase tracking-wider mt-0.5">{s.l}</div>
+                    </div>
+                  ))}
+                  <div className="ml-auto text-right">
+                    <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 10, letterSpacing: "0.14em", color: "rgba(255,255,255,0.22)", lineHeight: 1.4 }}>
+                      {k.tagline}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Context quote */}
+                <p className="text-[9.5px] text-[#252525] leading-relaxed italic mt-4">
+                  "{k.context}"
+                </p>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+
+      {/* Scroll hint */}
+      <div className="flex items-center gap-3 px-8 md:px-16 pb-10 -mt-2">
+        <div className="h-px w-4" style={{ background: "rgba(255,255,255,0.06)" }} />
+        <span className="text-[7px] uppercase tracking-[0.35em] text-[#161616]">Scroll to explore all five knocks →</span>
+      </div>
+    </section>
+  );
+}
+
 export default function KohliShrine() {
   return (
     <div className="bg-[#0a0a0a]" data-testid="kohli-shrine">
@@ -927,6 +1217,7 @@ export default function KohliShrine() {
         <ConstellationSpot />
         <CareerArc />
         <MCGMoment />
+        <CareerTimeline />
         <RecordWall />
         <DNARadarSection />
         <ChallengeCTA />
