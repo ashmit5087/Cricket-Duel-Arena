@@ -28,103 +28,152 @@ function CountUpStat({ value, suffix = "", prefix = "" }: { value: number; suffi
 }
 
 function HeroSection() {
-  useEffect(() => {
-    let cleanup: () => void = () => {};
-    (async () => {
-      const gsap = (await import("gsap")).default;
-      gsap.from(".kohli-word", {
-        yPercent: 110,
-        duration: 1.2,
-        stagger: 0.15,
-        ease: "power4.out",
-        delay: 0.2,
-      });
-    })();
-    return () => cleanup();
-  }, []);
-
   return (
-    <section className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden" data-testid="kohli-hero">
-      {/* GIF background */}
+    <section className="relative min-h-screen overflow-hidden" data-testid="kohli-hero">
+      {/* GIF — full bleed, barely touched */}
       <div className="absolute inset-0 z-0" aria-hidden>
         <img
           src="/kohli-bg.gif"
           alt=""
-          className="absolute inset-0 w-full h-full object-cover object-center"
-          style={{ opacity: 0.55 }}
+          className="absolute inset-0 w-full h-full object-cover object-top"
+          style={{ opacity: 0.9 }}
         />
-        {/* Hard vignette — darkens edges, keeps centre readable */}
+        {/* Only darken the left edge where text sits + the very bottom */}
         <div
           className="absolute inset-0"
           style={{
-            background: "radial-gradient(ellipse 80% 70% at 50% 40%, rgba(10,10,10,0.15) 0%, rgba(10,10,10,0.55) 50%, rgba(10,10,10,0.92) 100%)",
+            background:
+              "linear-gradient(to right, rgba(8,8,8,0.88) 0%, rgba(8,8,8,0.55) 30%, rgba(8,8,8,0.08) 60%, transparent 100%)",
           }}
         />
-        {/* Bottom-to-top fade so text section is crisp */}
         <div
           className="absolute inset-0"
           style={{
-            background: "linear-gradient(to bottom, rgba(10,10,10,0.3) 0%, rgba(10,10,10,0.6) 55%, rgba(10,10,10,1) 100%)",
-          }}
-        />
-        {/* Frosted-glass blur layer that intensifies near the text */}
-        <div
-          className="absolute inset-0"
-          style={{
-            backdropFilter: "blur(2px)",
-            WebkitBackdropFilter: "blur(2px)",
-            maskImage: "radial-gradient(ellipse 70% 60% at 50% 55%, transparent 30%, black 100%)",
-            WebkitMaskImage: "radial-gradient(ellipse 70% 60% at 50% 55%, transparent 30%, black 100%)",
+            background:
+              "linear-gradient(to bottom, rgba(8,8,8,0.35) 0%, transparent 20%, transparent 70%, rgba(8,8,8,0.97) 100%)",
           }}
         />
       </div>
 
-      <div className="relative z-10 text-center px-4">
-        {["VIRAT", "KOHLI"].map((word, lineIdx) => (
-          <div key={word} className="overflow-hidden leading-none">
-            <div
-              className="kohli-word inline-block font-serif text-[#f5f5f5]"
-              style={{ fontSize: "clamp(72px,15vw,180px)", fontWeight: 900, letterSpacing: "-0.02em" }}
-            >
-              {word}
-            </div>
-          </div>
-        ))}
-
-        <motion.div
-          className="mx-auto my-6"
-          initial={{ width: 0 }}
-          animate={{ width: 120 }}
-          transition={{ duration: 0.8, delay: 1.4 }}
-          style={{ height: 1, background: "#d4a500" }}
-        />
-
-        <motion.div
-          className="text-xs tracking-[0.25em] uppercase font-medium text-[#c0392b] mb-2"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1.6 }}
+      {/* Vertical side label */}
+      <motion.div
+        className="absolute left-8 top-1/2 z-10 -translate-y-1/2 flex flex-col items-center gap-3"
+        initial={{ opacity: 0, x: -12 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ delay: 2, duration: 0.8, ease: "easeOut" }}
+      >
+        <div className="h-16 w-px bg-gradient-to-b from-transparent via-[#c0392b] to-transparent" />
+        <span
+          className="text-[#c0392b] text-[9px] uppercase tracking-[0.35em] font-medium"
+          style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}
         >
-          ◆ The Pressure Architect — Archetype A
+          Archetype A
+        </span>
+        <div className="h-16 w-px bg-gradient-to-b from-transparent via-[#c0392b] to-transparent" />
+      </motion.div>
+
+      {/* Main text — anchored bottom-left, leaving the right for the image */}
+      <div className="absolute bottom-0 left-0 z-10 px-10 md:px-16 pb-14 max-w-[55%]">
+        {/* Label row */}
+        <motion.div
+          className="flex items-center gap-3 mb-5"
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.4, duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+        >
+          <div className="h-px w-8 bg-[#c0392b]" />
+          <span className="text-[#c0392b] text-[10px] uppercase tracking-[0.28em] font-medium">
+            The Pressure Architect
+          </span>
         </motion.div>
 
-        <motion.p
-          className="text-[#555] text-sm tracking-widest uppercase mt-4"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1.8 }}
+        {/* Name — clipped reveal per word */}
+        <div className="overflow-hidden mb-1">
+          <motion.div
+            initial={{ y: "110%" }}
+            animate={{ y: 0 }}
+            transition={{ delay: 0.55, duration: 1, ease: [0.16, 1, 0.3, 1] }}
+          >
+            <span
+              className="block leading-none text-white uppercase"
+              style={{
+                fontFamily: "'Bebas Neue', sans-serif",
+                fontSize: "clamp(52px, 10vw, 118px)",
+                letterSpacing: "0.04em",
+              }}
+            >
+              Virat
+            </span>
+          </motion.div>
+        </div>
+        <div className="overflow-hidden mb-6">
+          <motion.div
+            initial={{ y: "110%" }}
+            animate={{ y: 0 }}
+            transition={{ delay: 0.72, duration: 1, ease: [0.16, 1, 0.3, 1] }}
+          >
+            <span
+              className="block leading-none uppercase"
+              style={{
+                fontFamily: "'Bebas Neue', sans-serif",
+                fontSize: "clamp(52px, 10vw, 118px)",
+                letterSpacing: "0.04em",
+                color: "transparent",
+                WebkitTextStroke: "1.5px rgba(245,245,245,0.85)",
+              }}
+            >
+              Kohli
+            </span>
+          </motion.div>
+        </div>
+
+        {/* Gold rule + subtitle */}
+        <motion.div
+          className="flex items-center gap-4 mb-4"
+          initial={{ opacity: 0, x: -16 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 1.1, duration: 0.8, ease: "easeOut" }}
         >
-          A Monument in Numbers
-        </motion.p>
+          <div className="h-px flex-1 max-w-[64px] bg-[#d4a500]" />
+          <span className="text-[#6a6a6a] text-[10px] uppercase tracking-[0.22em]">
+            A Monument in Numbers
+          </span>
+        </motion.div>
+
+        {/* Stat pills */}
+        <motion.div
+          className="flex gap-4"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 1.35, duration: 0.7, ease: "easeOut" }}
+        >
+          {[
+            { v: "80", l: "Centuries" },
+            { v: "82.7", l: "Chase Avg" },
+            { v: "99", l: "DNA Score" },
+          ].map((s) => (
+            <div key={s.l} className="flex flex-col">
+              <span className="text-base font-bold font-mono text-[#d4a500] leading-none">{s.v}</span>
+              <span className="text-[9px] uppercase tracking-[0.18em] text-[#444] mt-0.5">{s.l}</span>
+            </div>
+          ))}
+        </motion.div>
       </div>
 
-      <div className="absolute bottom-10 w-full flex justify-center z-10">
+      {/* Scroll cue — bottom right so it doesn't obscure image centre */}
+      <motion.div
+        className="absolute bottom-10 right-10 z-10 flex flex-col items-center gap-2"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 1.8 }}
+      >
+        <span className="text-[9px] uppercase tracking-[0.25em] text-[#333]">Scroll</span>
         <motion.div
-          className="w-px h-12 bg-gradient-to-b from-[#c0392b] to-transparent"
-          animate={{ scaleY: [0.5, 1, 0.5] }}
-          transition={{ repeat: Infinity, duration: 2 }}
+          className="w-px h-10 bg-gradient-to-b from-[#c0392b] to-transparent"
+          animate={{ scaleY: [0.4, 1, 0.4], opacity: [0.4, 1, 0.4] }}
+          transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
         />
-      </div>
+      </motion.div>
     </section>
   );
 }
