@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { VideoBackground } from "@/components/ui/VideoBackground";
 import { RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer, Legend } from "recharts";
 import { PLAYERS, BATTLE_RESULTS, ARCHETYPES, RADAR_AXES } from "@/data/mockData";
+import { useBattle, useStatementMoments, usePrefetchPlayer, useAlgorithms } from "@/hooks/usePlayerData";
 
 type BattlePhase = "picker" | "intro" | "fight" | "ko";
 
@@ -344,18 +345,27 @@ function StatTable({ p1, p2 }: { p1: typeof PLAYERS[0]; p2: typeof PLAYERS[0] })
   );
 }
 
-function BattleView({ p1Id, p2Id }: { p1Id: string; p2Id: string }) {
+function BattleView({ p1Id, p2Id, algorithms }: { p1Id: string; p2Id: string; algorithms: string[] }) {
   const [phase, setPhase] = useState<BattlePhase>("intro");
   const [showKO, setShowKO] = useState(false);
 
   const p1 = PLAYERS.find((p) => p.id === p1Id) || PLAYERS[0];
   const p2 = PLAYERS.find((p) => p.id === p2Id) || PLAYERS[1];
 
+  const { data: liveResult } = useBattle(p1, p2, algorithms);
+
   const resultKey = `${p1Id}_${p2Id}`;
   const reverseKey = `${p2Id}_${p1Id}`;
-  const result = BATTLE_RESULTS[resultKey] || BATTLE_RESULTS[reverseKey];
-  const winner = result ? PLAYERS.find((p) => p.id === result.winner) : p1;
+  const mockResult = BATTLE_RESULTS[resultKey] || BATTLE_RESULTS[reverseKey];
+  const result: any = liveResult ?? mockResult;
+
+  const winner = mockResult ? PLAYERS.find((p) => p.id === mockResult.winner) : p1;
   const loser = winner?.id === p1.id ? p2 : p1;
+
+  const p1Stats = liveResult?.p1 ? { ...p1, ...liveResult.p1 } : p1;
+  const p2Stats = liveResult?.p2 ? { ...p2, ...liveResult.p2 } : p2;
+
+  const { data: moments } = useStatementMoments(p1.cricInfoId, p2.cricInfoId);
 
   const p1Arch = ARCHETYPES.find((a) => a.id === p1.archetypeId);
   const p2Arch = ARCHETYPES.find((a) => a.id === p2.archetypeId);
@@ -380,24 +390,29 @@ function BattleView({ p1Id, p2Id }: { p1Id: string; p2Id: string }) {
         )}
       </AnimatePresence>
 
-      <div className="relative min-h-screen pt-8 px-4 md:px-8" style={{ background: "#060606" }} data-testid="battle-view">
+      <div className="relative min-h-screen pt-8 px-4 md:px-8" data-testid="battle-view">
         <VideoBackground
-          src="https://stream.mux.com/01yW6GoUz01OTXk5w1Rt1MHkJWlCGIwj46SUONJZ4DJUE.m3u8"
-          opacity={0.38}
-          overlayOpacity={0.8}
+          src="/stadium-floodlight.mp4"
+          opacity={0.7}
+          overlayOpacity={0.28}
+        />
+        {/* gradient: heavy top/bottom, open middle so stadium floodlights show */}
+        <div
+          className="absolute inset-0 z-0 pointer-events-none"
+          style={{ background: "linear-gradient(to bottom, rgba(4,4,8,0.88) 0%, rgba(4,4,8,0.2) 30%, rgba(4,4,8,0.35) 65%, rgba(4,4,8,0.92) 100%)" }}
         />
         <div className="relative z-10 max-w-6xl mx-auto">
 
           {/* ── Reference-image style split player header ── */}
           <motion.div
             className="relative w-full overflow-hidden flex mb-10"
-            style={{ height: 360, border: "1px solid rgba(255,255,255,0.06)" }}
+            style={{ height: 220, border: "1px solid rgba(255,255,255,0.08)", backdropFilter: "blur(8px)", background: "rgba(6,4,4,0.55)" }}
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.15, duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
           >
             {/* P1 LEFT */}
-            <div className="flex-1 relative overflow-hidden flex items-end pb-8 pl-10 pr-4" data-testid="p1-header">
+            <div className="flex-1 relative overflow-hidden flex items-end pb-5 pl-8 pr-4" data-testid="p1-header">
               <div className="absolute inset-0" style={{ background: "linear-gradient(135deg, rgba(192,57,43,0.20) 0%, transparent 65%)" }} />
               {/* Ghost initials */}
               <div
@@ -415,10 +430,10 @@ function BattleView({ p1Id, p2Id }: { p1Id: string; p2Id: string }) {
               </div>
               <div>
                 <div className="text-[9px] uppercase tracking-[0.22em] mb-2 text-[#c0392b]">{p1Arch?.name}</div>
-                <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "clamp(44px,6.5vw,80px)", letterSpacing: "0.04em", lineHeight: 1 }} className="text-white">
+                <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "clamp(28px,4vw,52px)", letterSpacing: "0.04em", lineHeight: 1, textShadow: "0 2px 16px rgba(0,0,0,0.9)" }} className="text-white">
                   {p1.name.split(" ")[0]}
                 </div>
-                <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "clamp(44px,6.5vw,80px)", letterSpacing: "0.04em", lineHeight: 1, WebkitTextStroke: "1.5px rgba(192,57,43,0.75)", color: "transparent" }}>
+                <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "clamp(28px,4vw,52px)", letterSpacing: "0.04em", lineHeight: 1, WebkitTextStroke: "1.5px rgba(192,57,43,0.75)", color: "transparent" }}>
                   {p1.name.split(" ").slice(1).join(" ")}
                 </div>
                 <div className="flex items-center gap-2 mt-3">
@@ -457,7 +472,7 @@ function BattleView({ p1Id, p2Id }: { p1Id: string; p2Id: string }) {
             </div>
 
             {/* P2 RIGHT */}
-            <div className="flex-1 relative overflow-hidden flex items-end pb-8 pr-10 pl-4 justify-end" data-testid="p2-header">
+            <div className="flex-1 relative overflow-hidden flex items-end pb-5 pr-8 pl-4 justify-end" data-testid="p2-header">
               <div className="absolute inset-0" style={{ background: `linear-gradient(225deg, ${p2Arch?.color || "#d4a500"}16 0%, transparent 65%)` }} />
               <div
                 className="absolute top-0 left-[-20px] bottom-0 flex items-center select-none pointer-events-none overflow-hidden"
@@ -473,10 +488,10 @@ function BattleView({ p1Id, p2Id }: { p1Id: string; p2Id: string }) {
               </div>
               <div className="text-right">
                 <div className="text-[9px] uppercase tracking-[0.22em] mb-2" style={{ color: p2Arch?.color }}>{p2Arch?.name}</div>
-                <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "clamp(44px,6.5vw,80px)", letterSpacing: "0.04em", lineHeight: 1 }} className="text-white">
+                <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "clamp(28px,4vw,52px)", letterSpacing: "0.04em", lineHeight: 1, textShadow: "0 2px 16px rgba(0,0,0,0.9)" }} className="text-white">
                   {p2.name.split(" ")[0]}
                 </div>
-                <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "clamp(44px,6.5vw,80px)", letterSpacing: "0.04em", lineHeight: 1, WebkitTextStroke: `1.5px ${p2Arch?.color || "#d4a500"}70`, color: "transparent" }}>
+                <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "clamp(28px,4vw,52px)", letterSpacing: "0.04em", lineHeight: 1, WebkitTextStroke: `1.5px ${p2Arch?.color || "#d4a500"}70`, color: "transparent" }}>
                   {p2.name.split(" ").slice(1).join(" ")}
                 </div>
                 <div className="flex items-center gap-2 mt-3 justify-end">
@@ -504,15 +519,30 @@ function BattleView({ p1Id, p2Id }: { p1Id: string; p2Id: string }) {
           </motion.div>
 
           {result && (
-            <div className="mb-6 flex items-center gap-4 px-4 py-3" style={{ border: "1px solid rgba(192,57,43,0.2)", background: "rgba(192,57,43,0.04)" }}>
-              <div className="h-px flex-1 bg-[#c0392b]/15" />
-              <span className="text-[10px] uppercase tracking-[0.2em] text-[#c0392b] font-bold">DNA Similarity: {result.dnaSimilarity}%</span>
-              <span className="text-[10px] text-[#444]">{result.reason}</span>
-              <div className="h-px flex-1 bg-[#c0392b]/15" />
+            <div className="mb-6 flex flex-col gap-2">
+              <div className="flex items-center gap-4 px-4 py-3" style={{ border: "1px solid rgba(192,57,43,0.2)", background: "rgba(192,57,43,0.04)" }}>
+                <div className="h-px flex-1 bg-[#c0392b]/15" />
+                <span className="text-[10px] uppercase tracking-[0.2em] text-[#c0392b] font-bold">DNA Similarity: {result.dnaSimilarity}%</span>
+                <span className="text-[10px] text-[#444]">
+                  {result.statComparison?.reason || result.reason}
+                </span>
+                <div className="h-px flex-1 bg-[#c0392b]/15" />
+              </div>
+              
+              {result.judge && (
+                <div className="flex items-center gap-4 px-4 py-3" style={{ border: "1px solid rgba(212,165,0,0.2)", background: "rgba(212,165,0,0.04)" }}>
+                  <div className="flex flex-col">
+                    <span className="text-[10px] uppercase tracking-[0.2em] text-[#d4a500] font-bold mb-1">
+                      The Judge Speaks ({result.judge.agreement_rate}% Agreement)
+                    </span>
+                    <span className="text-xs text-[#d0d0d0]">{result.judge.reasoning}</span>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
-          <StatTable p1={p1} p2={p2} />
+          <StatTable p1={p1Stats} p2={p2Stats} />
 
           <div className="mb-8">
             <h3 className="font-serif text-xl text-[#f5f5f5] mb-4">DNA Fingerprint Overlay</h3>
@@ -526,6 +556,35 @@ function BattleView({ p1Id, p2Id }: { p1Id: string; p2Id: string }) {
               </RadarChart>
             </ResponsiveContainer>
           </div>
+
+          {moments && moments.length > 0 && (
+            <div className="mb-8">
+              <h3 className="font-serif text-xl text-[#f5f5f5] mb-4">Statement Moments</h3>
+              <div className="flex flex-col gap-3">
+                {moments.map((m, i) => (
+                  <motion.div
+                    key={i}
+                    className="border border-white/5 p-4 bg-[#0d0d0d]"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.08 }}
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <span className="text-xs text-[#c0392b] font-medium">{m.playerName}</span>
+                      {m.isKnockout && (
+                        <span className="text-[9px] uppercase tracking-widest text-[#d4a500] border border-[#d4a500]/30 px-2 py-0.5">
+                          Knockout
+                        </span>
+                      )}
+                    </div>
+                    <div className="font-mono text-lg font-bold text-white mb-1">{m.score}</div>
+                    <div className="text-xs text-[#555]">{m.match} · {m.date}</div>
+                    <div className="text-xs text-[#444] mt-2 italic">{m.context}</div>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="flex justify-center pb-16">
             <button
@@ -542,86 +601,90 @@ function BattleView({ p1Id, p2Id }: { p1Id: string; p2Id: string }) {
   );
 }
 
-function PlayerPicker({ onSelect }: { onSelect: (id: string) => void }) {
-  const [selected, setSelected] = useState<string | null>(null);
-  const kohli = PLAYERS[0];
+function PlayerPicker({ onSelect }: { onSelect: (p1Id: string, p2Id: string, algos: string[]) => void }) {
+  const [p1Id, setP1Id] = useState<string>("virat-kohli");
+  const [p2Id, setP2Id] = useState<string | null>(null);
+  const [selectedAlgos, setSelectedAlgos] = useState<Set<string>>(new Set(["xgboost", "random_forest"]));
+  
+  const { data: algorithms = [] } = useAlgorithms();
+  const prefetch = usePrefetchPlayer();
 
-  const opponents = PLAYERS.filter((p) => p.id !== "virat-kohli").slice(0, 12);
+  const handleAlgoToggle = (id: string) => {
+    const next = new Set(selectedAlgos);
+    if (next.has(id)) {
+      next.delete(id);
+    } else {
+      next.add(id);
+    }
+    setSelectedAlgos(next);
+  };
+
+  const handleStart = () => {
+    if (p1Id && p2Id && selectedAlgos.size >= 2) {
+      onSelect(p1Id, p2Id, Array.from(selectedAlgos));
+    }
+  };
 
   return (
-    <div className="relative min-h-screen py-16 px-4 md:px-8" style={{ background: "#070707" }} data-testid="player-picker">
-      <VideoBackground
-        src="https://stream.mux.com/01yW6GoUz01OTXk5w1Rt1MHkJWlCGIwj46SUONJZ4DJUE.m3u8"
-        opacity={0.4}
-        overlayOpacity={0.78}
-      />
-      <div className="relative z-10 max-w-6xl mx-auto">
-        <h1 className="font-serif text-4xl md:text-6xl text-[#f5f5f5] mb-2">Battle Arena</h1>
-        <p className="text-[#555] text-sm mb-12">Select your challenger. Only one DNA survives.</p>
+    <div className="relative min-h-screen py-16 px-4 md:px-8" data-testid="player-picker">
+      <VideoBackground src="/stadium-floodlight.mp4" opacity={0.72} overlayOpacity={0.28} />
+      <div className="absolute inset-0 z-0 pointer-events-none" style={{ background: "linear-gradient(to bottom, rgba(4,4,8,0.82) 0%, rgba(4,4,8,0.18) 35%, rgba(4,4,8,0.55) 75%, rgba(4,4,8,0.92) 100%)" }} />
+      
+      <div className="relative z-10 max-w-6xl mx-auto pb-20">
+        <h1 className="font-serif text-3xl md:text-5xl text-[#f5f5f5] mb-1" style={{ textShadow: "0 2px 20px rgba(0,0,0,0.9)" }}>Battle Arena</h1>
+        <p className="text-sm mb-10" style={{ color: "rgba(180,165,155,0.65)", textShadow: "0 1px 6px rgba(0,0,0,0.9)" }}>Select challengers and configure the simulation.</p>
 
-        <div className="grid md:grid-cols-2 gap-8">
+        <div className="grid md:grid-cols-2 gap-6 mb-12">
+          {/* PLAYER 1 */}
           <div>
-            <div className="text-xs text-[#c0392b] tracking-widest uppercase mb-4">Player 1 — Locked</div>
-            <div className="border-2 border-[#c0392b] p-6 bg-[#0d0505]">
-              <div className="text-3xl font-serif text-white mb-2">{kohli.name} {kohli.flag}</div>
-              <div className="text-xs text-[#c0392b] uppercase tracking-widest mb-4">{kohli.archetype}</div>
-              <div className="grid grid-cols-3 gap-4 text-center border-t border-white/5 pt-4">
-                {[
-                  { v: kohli.odiStats.hundreds.toString(), l: "100s" },
-                  { v: kohli.odiStats.avg.toFixed(1), l: "ODI Avg" },
-                  { v: kohli.dnaScore.toString(), l: "DNA Score" },
-                ].map((s) => (
-                  <div key={s.l}>
-                    <div className="text-xl font-bold text-[#d4a500]">{s.v}</div>
-                    <div className="text-xs text-[#555] mt-1">{s.l}</div>
-                  </div>
-                ))}
-              </div>
+            <div className="text-[10px] text-[#c0392b] tracking-widest uppercase mb-3" style={{ textShadow: "0 0 10px rgba(192,57,43,0.4)" }}>Player 1</div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {PLAYERS.map((p) => {
+                const arch = ARCHETYPES.find((a) => a.id === p.archetypeId);
+                const col = arch?.color || "#c0392b";
+                const isSelected = p1Id === p.id;
+                if (p.id === p2Id) return null; // Can't select same player twice
+                
+                return (
+                  <button
+                    key={`p1-${p.id}`}
+                    onClick={() => setP1Id(p.id)}
+                    className="relative p-2.5 text-left transition-all duration-200 overflow-hidden group"
+                    style={{ border: `1px solid ${isSelected ? col : "rgba(255,255,255,0.07)"}`, background: isSelected ? `${col}18` : "rgba(8,8,10,0.6)", backdropFilter: "blur(4px)" }}
+                  >
+                    {isSelected && <div className="absolute top-0 left-0 right-0 h-px" style={{ background: `linear-gradient(90deg,transparent,${col},transparent)` }} />}
+                    <div className="flex justify-between items-start mb-1">
+                      <div className="text-xs text-[#ebebeb] font-medium leading-tight pr-1">{p.name}</div>
+                    </div>
+                    {isSelected && <div className="mt-1.5 text-[8px] uppercase tracking-[0.2em]" style={{ color: col }}>◆ P1</div>}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
+          {/* PLAYER 2 */}
           <div>
-            <div className="text-xs text-[#555] tracking-widest uppercase mb-4">Choose Opponent</div>
-            <div className="grid grid-cols-2 gap-3">
-              {opponents.map((p) => {
+            <div className="text-[10px] text-[#d4a500] tracking-widest uppercase mb-3" style={{ textShadow: "0 0 10px rgba(212,165,0,0.4)" }}>Player 2</div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {PLAYERS.map((p) => {
                 const arch = ARCHETYPES.find((a) => a.id === p.archetypeId);
-                const col = arch?.color || "#c0392b";
-                const isSelected = selected === p.id;
+                const col = arch?.color || "#d4a500";
+                const isSelected = p2Id === p.id;
+                if (p.id === p1Id) return null;
+                
                 return (
                   <button
-                    key={p.id}
-                    onClick={() => setSelected(p.id)}
-                    className="relative p-4 text-left transition-all duration-200 overflow-hidden group"
-                    style={{
-                      border: `1px solid ${isSelected ? col : "rgba(255,255,255,0.06)"}`,
-                      background: isSelected ? `${col}0d` : "#0c0c0c",
-                    }}
-                    data-testid={`pick-${p.id}`}
+                    key={`p2-${p.id}`}
+                    onClick={() => setP2Id(p.id)}
+                    className="relative p-2.5 text-left transition-all duration-200 overflow-hidden group"
+                    style={{ border: `1px solid ${isSelected ? col : "rgba(255,255,255,0.07)"}`, background: isSelected ? `${col}18` : "rgba(8,8,10,0.6)", backdropFilter: "blur(4px)" }}
                   >
-                    {isSelected && (
-                      <div className="absolute top-0 left-0 right-0 h-px" style={{ background: `linear-gradient(90deg,transparent,${col},transparent)` }} />
-                    )}
-                    <div className="flex justify-between items-start mb-2">
-                      <div className="text-sm text-[#ebebeb] font-medium leading-tight pr-1">{p.name}</div>
-                      <span className="text-base leading-none shrink-0">{p.flag}</span>
+                    {isSelected && <div className="absolute top-0 left-0 right-0 h-px" style={{ background: `linear-gradient(90deg,transparent,${col},transparent)` }} />}
+                    <div className="flex justify-between items-start mb-1">
+                      <div className="text-xs text-[#ebebeb] font-medium leading-tight pr-1">{p.name}</div>
                     </div>
-                    <div className="text-[10px] uppercase tracking-wider mb-2.5" style={{ color: col }}>
-                      {arch?.name}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 h-px bg-[#1c1c1c] relative overflow-hidden">
-                        <div
-                          className="absolute top-0 left-0 h-full transition-all duration-500"
-                          style={{ width: isSelected ? `${p.dnaScore}%` : "0%", background: col, opacity: 0.7 }}
-                        />
-                      </div>
-                      <span className="text-[10px] font-mono shrink-0" style={{ color: col }}>{p.dnaScore}</span>
-                    </div>
-                    {isSelected && (
-                      <div className="mt-2.5 text-[9px] uppercase tracking-[0.2em]" style={{ color: col }}>
-                        ◆ Selected
-                      </div>
-                    )}
+                    {isSelected && <div className="mt-1.5 text-[8px] uppercase tracking-[0.2em]" style={{ color: col }}>◆ P2</div>}
                   </button>
                 );
               })}
@@ -629,18 +692,51 @@ function PlayerPicker({ onSelect }: { onSelect: (id: string) => void }) {
           </div>
         </div>
 
-        {selected && (
-          <motion.div
-            className="flex justify-center mt-10"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
+        {/* ALGORITHMS */}
+        <div className="mb-12">
+          <div className="text-[10px] text-white/50 tracking-widest uppercase mb-3">
+            Simulation Engines <span className="text-[#c0392b] ml-2">({selectedAlgos.size} selected, min 2)</span>
+          </div>
+          <div className="grid md:grid-cols-3 gap-3">
+            {algorithms.map((algo) => {
+              const isSelected = selectedAlgos.has(algo.id);
+              return (
+                <button
+                  key={algo.id}
+                  onClick={() => handleAlgoToggle(algo.id)}
+                  className="relative p-4 text-left transition-all duration-200 overflow-hidden"
+                  style={{
+                    border: `1px solid ${isSelected ? "#c0392b" : "rgba(255,255,255,0.07)"}`,
+                    background: isSelected ? "rgba(192,57,43,0.08)" : "rgba(8,8,10,0.6)",
+                  }}
+                >
+                  <div className="text-xs text-white font-bold uppercase tracking-wider mb-2">
+                    {algo.id.replace("_", " ")}
+                  </div>
+                  <div className="text-[10px] text-[#888] leading-relaxed">
+                    {algo.description}
+                  </div>
+                  {isSelected && (
+                    <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-[#c0392b] shadow-[0_0_8px_#c0392b]" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {p1Id && p2Id && (
+          <motion.div className="flex justify-center mt-10" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
             <button
-              onClick={() => onSelect(selected)}
-              className="px-12 py-4 text-sm font-bold tracking-[0.2em] uppercase bg-[#c0392b] text-white hover:bg-[#a93226] transition-colors"
-              data-testid="start-battle-btn"
+              onClick={handleStart}
+              disabled={selectedAlgos.size < 2}
+              className={`px-12 py-4 text-sm font-bold tracking-[0.2em] uppercase transition-colors ${
+                selectedAlgos.size >= 2
+                  ? "bg-[#c0392b] text-white hover:bg-[#a93226]"
+                  : "bg-white/10 text-white/30 cursor-not-allowed"
+              }`}
             >
-              Start the Battle →
+              Run the Duel →
             </button>
           </motion.div>
         )}
@@ -651,17 +747,24 @@ function PlayerPicker({ onSelect }: { onSelect: (id: string) => void }) {
 
 export default function BattleArena() {
   const [location] = useLocation();
+  const [p1Id, setP1Id] = useState<string | null>(null);
   const [p2Id, setP2Id] = useState<string | null>(null);
+  const [algorithms, setAlgorithms] = useState<string[]>([]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    const p1 = params.get("p1");
     const p2 = params.get("p2");
-    if (p2) setP2Id(p2);
+    if (p1 && p2) {
+      setP1Id(p1);
+      setP2Id(p2);
+      setAlgorithms(["xgboost", "random_forest"]);
+    }
   }, [location]);
 
-  if (!p2Id) {
-    return <PlayerPicker onSelect={(id) => setP2Id(id)} />;
+  if (!p1Id || !p2Id || algorithms.length === 0) {
+    return <PlayerPicker onSelect={(p1, p2, algos) => { setP1Id(p1); setP2Id(p2); setAlgorithms(algos); }} />;
   }
 
-  return <BattleView p1Id="virat-kohli" p2Id={p2Id} />;
+  return <BattleView p1Id={p1Id} p2Id={p2Id} algorithms={algorithms} />;
 }

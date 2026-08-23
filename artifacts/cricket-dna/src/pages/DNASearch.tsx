@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { PLAYERS, ARCHETYPES } from "@/data/mockData";
+import { usePlayerSearch, useKNNTwins, usePrefetchPlayer } from "@/hooks/usePlayerData";
+import type { SearchResult } from "@/lib/api";
 
 const PLACEHOLDER_WORDS = ["Jasprit Bumrah...", "Virat Kohli...", "MS Dhoni...", "Sachin Tendulkar...", "Rohit Sharma..."];
 
@@ -35,58 +37,25 @@ function RolodexPlaceholder() {
   );
 }
 
-function DNA_TWINS_MAP(): Record<string, string[]> {
-  return {
-    "virat-kohli": ["kane-williamson", "babar-azam", "joe-root", "sachin-tendulkar", "ricky-ponting"],
-    "jasprit-bumrah": ["lasith-malinga", "glenn-mcgrath", "mitchell-starc", "pat-cummins", "dale-steyn"],
-    "ms-dhoni": ["adam-gilchrist", "brendon-mccullum", "jonny-bairstow", "ab-de-villiers", "brendon-mccullum"],
-    "sachin-tendulkar": ["virat-kohli", "ricky-ponting", "brian-lara", "joe-root", "kane-williamson"],
-    "rohit-sharma": ["chris-gayle", "david-warner", "adam-gilchrist", "brendon-mccullum", "jason-roy"],
-    "rahul-dravid": ["joe-root", "kane-williamson", "kumar-sangakkara", "younis-khan", "hashim-amla"],
-    "ab-de-villiers": ["brian-lara", "ms-dhoni", "rishabh-pant", "brendon-mccullum", "shahid-afridi"],
-    "shane-warne": ["muttiah-muralitharan", "anil-kumble", "ravichandran-ashwin", "harbhajan-singh", "imran-tahir"],
-  };
-}
-
-const SIMILARITY_SCORES: Record<string, Record<string, number>> = {
-  "virat-kohli": { "kane-williamson": 91, "babar-azam": 88, "joe-root": 85, "sachin-tendulkar": 82, "ricky-ponting": 78 },
-  "jasprit-bumrah": { "lasith-malinga": 87, "glenn-mcgrath": 84, "mitchell-starc": 82, "pat-cummins": 80, "dale-steyn": 78 },
-  "ms-dhoni": { "adam-gilchrist": 75, "brendon-mccullum": 72, "jonny-bairstow": 68, "ab-de-villiers": 65, "rishabh-pant": 62 },
-  "sachin-tendulkar": { "virat-kohli": 84, "ricky-ponting": 78, "brian-lara": 76, "joe-root": 74, "kane-williamson": 72 },
-  "rohit-sharma": { "chris-gayle": 80, "david-warner": 78, "adam-gilchrist": 73, "brendon-mccullum": 70, "jason-roy": 68 },
-  "rahul-dravid": { "joe-root": 82, "kane-williamson": 79, "kumar-sangakkara": 76, "younis-khan": 72, "hashim-amla": 70 },
-  "ab-de-villiers": { "brian-lara": 78, "ms-dhoni": 74, "rishabh-pant": 70, "brendon-mccullum": 68, "shahid-afridi": 62 },
-  "shane-warne": { "muttiah-muralitharan": 85, "anil-kumble": 80, "ravichandran-ashwin": 72, "harbhajan-singh": 68, "ravindra-jadeja": 58 },
-};
-
 export default function DNASearch() {
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<typeof PLAYERS[0] | null>(null);
-  const [showCard, setShowCard] = useState(false);
+  const [selectedPlayer, setSelectedPlayer] = useState<SearchResult | null>(null);
 
-  const TWINS_MAP = DNA_TWINS_MAP();
-
-  const handleSearch = (q: string) => {
-    const found = PLAYERS.find((p) => p.name.toLowerCase().includes(q.toLowerCase()));
-    if (found) {
-      setResults(found);
-      setShowCard(true);
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" && query) handleSearch(query);
-  };
+  const { data: searchResults, isFetching: searching } = usePlayerSearch(query);
+  const { data: knnResult, isLoading: twinsLoading } = useKNNTwins(
+    selectedPlayer?.internalId,
+    selectedPlayer?.cricbuzzPlayerId
+  );
+  const prefetch = usePrefetchPlayer();
 
   const seededPlayers = [
     "Virat Kohli", "Jasprit Bumrah", "MS Dhoni", "Sachin Tendulkar", "Rohit Sharma", "AB de Villiers",
   ];
 
-  const twinIds = results ? (TWINS_MAP[results.id] || results.dnaTwins) : [];
-  const twinPlayers = twinIds.map((id) => PLAYERS.find((p) => p.id === id)).filter(Boolean) as typeof PLAYERS;
-  const similarities = results ? (SIMILARITY_SCORES[results.id] || {}) : {};
-
-  const resultArch = results ? ARCHETYPES.find((a) => a.id === results.archetypeId) : null;
+  const selectedMock = selectedPlayer ? PLAYERS.find((p) => p.id === selectedPlayer.internalId) : null;
+  const resultArch = selectedPlayer ? ARCHETYPES.find((a) => a.id === selectedPlayer.archetypeId) : null;
+  const twins = knnResult?.twins ?? [];
+  const topTwin = twins[0];
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] py-24 px-4 md:px-8 flex flex-col items-center" data-testid="dna-search">
@@ -109,8 +78,16 @@ export default function DNASearch() {
             <input
               type="text"
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={handleKeyDown}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                setSelectedPlayer(null);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && searchResults && searchResults.length > 0) {
+                  setSelectedPlayer(searchResults[0]);
+                  setQuery(searchResults[0].name);
+                }
+              }}
               className="flex-1 bg-transparent py-4 text-[#f5f5f5] text-lg outline-none"
               data-testid="player-search-input"
             />
@@ -120,7 +97,12 @@ export default function DNASearch() {
               </div>
             )}
             <button
-              onClick={() => query && handleSearch(query)}
+              onClick={() => {
+                if (searchResults && searchResults.length > 0) {
+                  setSelectedPlayer(searchResults[0]);
+                  setQuery(searchResults[0].name);
+                }
+              }}
               className="px-6 py-4 text-sm font-bold tracking-widest uppercase bg-[#c0392b] text-white hover:bg-[#a93226] transition-colors shrink-0"
               data-testid="search-btn"
             >
@@ -129,11 +111,39 @@ export default function DNASearch() {
           </div>
         </div>
 
+        {searchResults && searchResults.length > 0 && !selectedPlayer && (
+          <div className="border border-white/8 bg-[#111] mt-1">
+            {searchResults.map((result) => (
+              <button
+                key={result.internalId}
+                onMouseEnter={() => prefetch(result.cricbuzzPlayerId)}
+                onClick={() => {
+                  setSelectedPlayer(result);
+                  setQuery(result.name);
+                }}
+                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/4 text-left"
+              >
+                <span className="text-sm text-white">{result.name}</span>
+                <span className="text-xs text-[#555]">{result.flag} {result.country}</span>
+                <span className="text-[10px] ml-auto" style={{ color: "#888" }}>
+                  {result.archetypeName || result.archetypeId}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {searching && query.trim().length >= 2 && !selectedPlayer && (
+          <div className="mt-2 text-[#444] text-xs tracking-widest uppercase animate-pulse">
+            Searching...
+          </div>
+        )}
+
         <div className="flex flex-wrap gap-2 justify-center mb-12">
           {seededPlayers.map((name) => (
             <button
               key={name}
-              onClick={() => { setQuery(name); handleSearch(name); }}
+              onClick={() => { setQuery(name); setSelectedPlayer(null); }}
               className="px-3 py-1.5 text-xs border border-white/10 text-[#666] hover:border-[#c0392b] hover:text-[#c0392b] transition-colors"
               data-testid={`seed-${name.replace(/ /g, "-").toLowerCase()}`}
             >
@@ -143,7 +153,7 @@ export default function DNASearch() {
         </div>
 
         <AnimatePresence>
-          {showCard && results && (
+          {selectedPlayer && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -153,10 +163,10 @@ export default function DNASearch() {
               <div className="border border-[#c0392b]/30 p-6 mb-8" style={{ background: "#0d0505" }}>
                 <div className="flex items-start justify-between mb-4">
                   <div>
-                    <div className="font-serif text-3xl text-[#f5f5f5] mb-1">{results.name}</div>
-                    <div className="text-xs text-[#555]">{results.country} · {results.role}</div>
+                    <div className="font-serif text-3xl text-[#f5f5f5] mb-1">{selectedPlayer.name}</div>
+                    <div className="text-xs text-[#555]">{selectedPlayer.country} · {selectedPlayer.role}</div>
                   </div>
-                  <span className="text-2xl">{results.flag}</span>
+                  <span className="text-2xl">{selectedPlayer.flag}</span>
                 </div>
 
                 {resultArch && (
@@ -167,10 +177,10 @@ export default function DNASearch() {
 
                 <div className="grid grid-cols-4 gap-4 text-center border-t border-white/5 pt-4">
                   {[
-                    { v: results.odiStats.hundreds, l: "ODI 100s" },
-                    { v: results.odiStats.avg.toFixed(1), l: "ODI Avg" },
-                    { v: results.dnaScore, l: "DNA Score" },
-                    { v: results.odiStats.runs.toLocaleString(), l: "ODI Runs" },
+                    { v: selectedMock?.odiStats?.hundreds ?? "-", l: "ODI 100s" },
+                    { v: selectedMock?.odiStats?.avg?.toFixed(1) ?? "-", l: "ODI Avg" },
+                    { v: selectedMock?.dnaScore ?? "-", l: "DNA Score" },
+                    { v: selectedMock?.odiStats?.runs?.toLocaleString() ?? "-", l: "ODI Runs" },
                   ].map((s) => (
                     <div key={s.l}>
                       <div className="text-xl font-bold text-[#d4a500]">{s.v}</div>
@@ -183,8 +193,7 @@ export default function DNASearch() {
               <h2 className="font-serif text-2xl text-[#f5f5f5] mb-6">Top DNA Twins</h2>
 
               <div className="space-y-3 mb-8">
-                {twinPlayers.slice(0, 5).map((twin, i) => {
-                  const sim = similarities[twin.id] || (85 - i * 6);
+                {twins.map((twin, i) => {
                   const arch = ARCHETYPES.find((a) => a.id === twin.archetypeId);
                   return (
                     <motion.div
@@ -210,11 +219,11 @@ export default function DNASearch() {
                               className="h-full rounded"
                               style={{ background: arch?.color || "#d4a500" }}
                               initial={{ width: 0 }}
-                              animate={{ width: `${sim}%` }}
+                              animate={{ width: `${twin.similarity}%` }}
                               transition={{ duration: 0.8, delay: i * 0.1 }}
                             />
                           </div>
-                          <span className="text-xs font-bold text-[#d4a500] shrink-0">{sim}%</span>
+                          <span className="text-xs font-bold text-[#d4a500] shrink-0">{twin.similarity}%</span>
                         </div>
                       </div>
                     </motion.div>
@@ -222,15 +231,21 @@ export default function DNASearch() {
                 })}
               </div>
 
+              {twinsLoading && (
+                <div className="text-[#444] text-xs tracking-widest uppercase animate-pulse">
+                  Calculating DNA similarity...
+                </div>
+              )}
+
               <div className="border border-white/10 p-6 bg-[#0d0d0d]" data-testid="share-card">
                 <div className="text-xs text-[#555] uppercase tracking-widest mb-4">DNA Match Card</div>
                 <div className="border border-[#c0392b]/20 p-4 bg-black text-center">
                   <div className="text-xs text-[#c0392b] tracking-widest uppercase mb-2">◆ CRICKET DNA</div>
-                  <div className="font-serif text-2xl text-white mb-2">{results.name}</div>
+                  <div className="font-serif text-2xl text-white mb-2">{selectedPlayer.name}</div>
                   <div className="text-xs text-[#666] mb-3">Archetype: {resultArch?.name}</div>
                   <div className="text-xs text-[#888]">Nearest DNA Twin:</div>
-                  <div className="font-serif text-xl text-[#d4a500] mt-1">{twinPlayers[0]?.name}</div>
-                  <div className="text-xs text-[#555] mt-2">Similarity: {Object.values(similarities)[0] || 85}%</div>
+                  <div className="font-serif text-xl text-[#d4a500] mt-1">{topTwin?.name || "—"}</div>
+                  <div className="text-xs text-[#555] mt-2">Similarity: {topTwin?.similarity ?? "—"}%</div>
                   <div className="text-xs text-[#333] mt-4">cricketdna.app</div>
                 </div>
                 <button

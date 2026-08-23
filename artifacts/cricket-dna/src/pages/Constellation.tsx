@@ -1,8 +1,9 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer } from "recharts";
 import { PLAYERS, ARCHETYPES, RADAR_AXES } from "@/data/mockData";
 import { VideoBackground } from "@/components/ui/VideoBackground";
+import { useConstellation } from "@/hooks/usePlayerData";
 
 type Era = "all" | "pre2000" | "2000-2015" | "2015+";
 type Format = "all" | "test" | "odi" | "t20";
@@ -59,11 +60,24 @@ export default function Constellation() {
   const [format, setFormat] = useState<Format>("all");
   const [selected, setSelected] = useState<typeof PLAYERS[0] | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
+  const { data: constellationData } = useConstellation();
 
   const SVG_W = 720;
   const SVG_H = 440;
 
-  const filtered = PLAYERS.filter((p) => {
+  const mergedPlayers = useMemo(() => {
+    const byId = new Map(PLAYERS.map((p) => [p.id, p]));
+    const merged = (constellationData ?? [])
+      .map((point) => {
+        const base = byId.get(point.id);
+        if (!base) return null;
+        return { ...base, x: point.x, y: point.y, dnaScore: point.dnaScore };
+      })
+      .filter(Boolean) as typeof PLAYERS;
+    return merged.length > 0 ? merged : PLAYERS;
+  }, [constellationData]);
+
+  const filtered = mergedPlayers.filter((p) => {
     const matchSearch = !search || p.name.toLowerCase().includes(search.toLowerCase());
     const matchEra = era === "all" || getEra(p.id).includes(era);
     const matchFormat = format === "all" || getFormat(p).includes(format);
@@ -142,7 +156,7 @@ export default function Constellation() {
               className="w-full"
               style={{ minWidth: 400, cursor: "crosshair" }}
             >
-              {PLAYERS.map((player) => {
+              {mergedPlayers.map((player) => {
                 const arch = ARCHETYPES.find((a) => a.id === player.archetypeId);
                 const isKohli = player.id === "virat-kohli";
                 const isVisible = filteredIds.has(player.id);

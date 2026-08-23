@@ -1,0 +1,2134 @@
+{
+  "253802": {
+    "cricInfoId": "253802",
+    "name": "Virat Kohli",
+    "role": "batter",
+    "testStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "odiStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "t20Stats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "iplStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    }
+  },
+  "34102": {
+    "cricInfoId": "34102",
+    "name": "Rohit Sharma",
+    "role": "batter",
+    "testStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "odiStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "t20Stats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "iplStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    }
+  },
+  "625371": {
+    "cricInfoId": "625371",
+    "name": "Jasprit Bumrah",
+    "role": "bowler",
+    "testStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "odiStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "t20Stats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "iplStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    }
+  },
+  "28081": {
+    "cricInfoId": "28081",
+    "name": "MS Dhoni",
+    "role": "keeper",
+    "testStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "odiStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "t20Stats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "iplStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    }
+  },
+  "35320": {
+    "cricInfoId": "35320",
+    "name": "Sachin Tendulkar",
+    "role": "batter",
+    "testStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "odiStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "t20Stats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "iplStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    }
+  },
+  "28114": {
+    "cricInfoId": "28114",
+    "name": "Rahul Dravid",
+    "role": "batter",
+    "testStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "odiStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "t20Stats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "iplStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    }
+  },
+  "30176": {
+    "cricInfoId": "30176",
+    "name": "Anil Kumble",
+    "role": "bowler",
+    "testStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "odiStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "t20Stats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "iplStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    }
+  },
+  "303669": {
+    "cricInfoId": "303669",
+    "name": "Joe Root",
+    "role": "batter",
+    "testStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "odiStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "t20Stats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "iplStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    }
+  },
+  "277906": {
+    "cricInfoId": "277906",
+    "name": "Kane Williamson",
+    "role": "batter",
+    "testStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "odiStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "t20Stats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "iplStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    }
+  },
+  "348144": {
+    "cricInfoId": "348144",
+    "name": "Babar Azam",
+    "role": "batter",
+    "testStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "odiStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "t20Stats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "iplStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    }
+  },
+  "44936": {
+    "cricInfoId": "44936",
+    "name": "AB de Villiers",
+    "role": "batter",
+    "testStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "odiStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "t20Stats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "iplStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    }
+  },
+  "219889": {
+    "cricInfoId": "219889",
+    "name": "David Warner",
+    "role": "batter",
+    "testStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "odiStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "t20Stats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "iplStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    }
+  },
+  "7133": {
+    "cricInfoId": "7133",
+    "name": "Ricky Ponting",
+    "role": "batter",
+    "testStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "odiStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "t20Stats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "iplStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    }
+  },
+  "4188": {
+    "cricInfoId": "4188",
+    "name": "Glenn McGrath",
+    "role": "bowler",
+    "testStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "odiStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "t20Stats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "iplStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    }
+  },
+  "13552": {
+    "cricInfoId": "13552",
+    "name": "Shane Warne",
+    "role": "bowler",
+    "testStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "odiStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "t20Stats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "iplStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    }
+  },
+  "31905": {
+    "cricInfoId": "31905",
+    "name": "Adam Gilchrist",
+    "role": "keeper",
+    "testStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "odiStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "t20Stats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "iplStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    }
+  },
+  "19296": {
+    "cricInfoId": "19296",
+    "name": "James Anderson",
+    "role": "bowler",
+    "testStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "odiStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "t20Stats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "iplStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    }
+  },
+  "311158": {
+    "cricInfoId": "311158",
+    "name": "Ben Stokes",
+    "role": "allround",
+    "testStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "odiStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "t20Stats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "iplStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    }
+  },
+  "50710": {
+    "cricInfoId": "50710",
+    "name": "Kumar Sangakkara",
+    "role": "keeper",
+    "testStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "odiStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "t20Stats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "iplStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    }
+  },
+  "49636": {
+    "cricInfoId": "49636",
+    "name": "Muttiah Muralitharan",
+    "role": "bowler",
+    "testStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "odiStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "t20Stats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "iplStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    }
+  },
+  "49536": {
+    "cricInfoId": "49536",
+    "name": "Lasith Malinga",
+    "role": "bowler",
+    "testStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "odiStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "t20Stats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "iplStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    }
+  },
+  "52337": {
+    "cricInfoId": "52337",
+    "name": "Brian Lara",
+    "role": "batter",
+    "testStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "odiStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "t20Stats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "iplStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    }
+  },
+  "51880": {
+    "cricInfoId": "51880",
+    "name": "Chris Gayle",
+    "role": "batter",
+    "testStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "odiStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "t20Stats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "iplStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    }
+  },
+  "324418": {
+    "cricInfoId": "324418",
+    "name": "Pat Cummins",
+    "role": "bowler",
+    "testStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "odiStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "t20Stats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "iplStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    }
+  },
+  "311631": {
+    "cricInfoId": "311631",
+    "name": "Mitchell Starc",
+    "role": "bowler",
+    "testStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "odiStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "t20Stats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "iplStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    }
+  },
+  "45789": {
+    "cricInfoId": "45789",
+    "name": "Jacques Kallis",
+    "role": "allround",
+    "testStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "odiStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "t20Stats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "iplStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    }
+  },
+  "28779": {
+    "cricInfoId": "28779",
+    "name": "Sourav Ganguly",
+    "role": "batter",
+    "testStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "odiStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "t20Stats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "iplStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    }
+  },
+  "35263": {
+    "cricInfoId": "35263",
+    "name": "Virender Sehwag",
+    "role": "batter",
+    "testStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "odiStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "t20Stats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "iplStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    }
+  },
+  "43209": {
+    "cricInfoId": "43209",
+    "name": "Harbhajan Singh",
+    "role": "bowler",
+    "testStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "odiStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "t20Stats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "iplStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    }
+  },
+  "43429": {
+    "cricInfoId": "43429",
+    "name": "Imran Khan",
+    "role": "allround",
+    "testStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "odiStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "t20Stats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "iplStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    }
+  },
+  "44828": {
+    "cricInfoId": "44828",
+    "name": "Dale Steyn",
+    "role": "bowler",
+    "testStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "odiStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "t20Stats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "iplStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    }
+  },
+  "8917": {
+    "cricInfoId": "8917",
+    "name": "Wasim Akram",
+    "role": "bowler",
+    "testStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "odiStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "t20Stats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "iplStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    }
+  },
+  "40439": {
+    "cricInfoId": "40439",
+    "name": "Younis Khan",
+    "role": "batter",
+    "testStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "odiStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "t20Stats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "iplStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    }
+  },
+  "43290": {
+    "cricInfoId": "43290",
+    "name": "Shahid Afridi",
+    "role": "allround",
+    "testStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "odiStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "t20Stats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "iplStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    }
+  },
+  "43263": {
+    "cricInfoId": "43263",
+    "name": "Shoaib Akhtar",
+    "role": "bowler",
+    "testStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "odiStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "t20Stats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "iplStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    }
+  },
+  "8166": {
+    "cricInfoId": "8166",
+    "name": "Brett Lee",
+    "role": "bowler",
+    "testStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "odiStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "t20Stats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "iplStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    }
+  },
+  "48749": {
+    "cricInfoId": "48749",
+    "name": "Mahela Jayawardene",
+    "role": "batter",
+    "testStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "odiStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "t20Stats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "iplStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    }
+  },
+  "42656": {
+    "cricInfoId": "42656",
+    "name": "Hashim Amla",
+    "role": "batter",
+    "testStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "odiStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "t20Stats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "iplStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    }
+  },
+  "84985": {
+    "cricInfoId": "84985",
+    "name": "Brendon McCullum",
+    "role": "keeper",
+    "testStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "odiStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "t20Stats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "iplStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    }
+  },
+  "374919": {
+    "cricInfoId": "374919",
+    "name": "Trent Boult",
+    "role": "bowler",
+    "testStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "odiStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "t20Stats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "iplStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    }
+  },
+  "420889": {
+    "cricInfoId": "420889",
+    "name": "Glenn Maxwell",
+    "role": "allround",
+    "testStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "odiStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "t20Stats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "iplStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    }
+  },
+  "272401": {
+    "cricInfoId": "272401",
+    "name": "Aaron Finch",
+    "role": "batter",
+    "testStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "odiStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "t20Stats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "iplStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    }
+  },
+  "369077": {
+    "cricInfoId": "369077",
+    "name": "Jonny Bairstow",
+    "role": "keeper",
+    "testStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "odiStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "t20Stats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "iplStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    }
+  },
+  "49428": {
+    "cricInfoId": "49428",
+    "name": "R. Ashwin",
+    "role": "bowler",
+    "testStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "odiStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "t20Stats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "iplStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    }
+  },
+  "234675": {
+    "cricInfoId": "234675",
+    "name": "Ravindra Jadeja",
+    "role": "allround",
+    "testStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "odiStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "t20Stats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "iplStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    }
+  },
+  "481896": {
+    "cricInfoId": "481896",
+    "name": "Mohammed Shami",
+    "role": "bowler",
+    "testStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "odiStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "t20Stats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "iplStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    }
+  },
+  "931581": {
+    "cricInfoId": "931581",
+    "name": "Rishabh Pant",
+    "role": "keeper",
+    "testStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "odiStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "t20Stats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "iplStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    }
+  },
+  "1125619": {
+    "cricInfoId": "1125619",
+    "name": "Shubman Gill",
+    "role": "batter",
+    "testStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "odiStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "t20Stats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "iplStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    }
+  },
+  "422108": {
+    "cricInfoId": "422108",
+    "name": "KL Rahul",
+    "role": "batter",
+    "testStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "odiStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "t20Stats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "iplStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    }
+  },
+  "832172": {
+    "cricInfoId": "832172",
+    "name": "Marnus Labuschagne",
+    "role": "batter",
+    "testStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "odiStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "t20Stats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "iplStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    }
+  },
+  "1175515": {
+    "cricInfoId": "1175515",
+    "name": "Haris Rauf",
+    "role": "bowler",
+    "testStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "odiStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "t20Stats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "iplStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    }
+  },
+  "1233557": {
+    "cricInfoId": "1233557",
+    "name": "Naseem Shah",
+    "role": "bowler",
+    "testStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "odiStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "t20Stats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    },
+    "iplStats": {
+      "matches": 0,
+      "runs": 0,
+      "avg": 0,
+      "sr": 0,
+      "hundreds": 0,
+      "fifties": 0,
+      "hs": "0"
+    }
+  }
+}

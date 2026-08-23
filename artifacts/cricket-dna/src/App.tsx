@@ -12,8 +12,26 @@ import KohliShrine from "@/pages/KohliShrine";
 import BattleArena from "@/pages/BattleArena";
 import Constellation from "@/pages/Constellation";
 import DNASearch from "@/pages/DNASearch";
+import Archetypes from "@/pages/Archetypes";
+import Quiz from "@/pages/Quiz";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // Never retry failed requests — every retry burns CricData budget
+      retry: false,
+      // 24h stale time — matches server-side Redis TTL exactly.
+      // Data fetched once per day, never re-fetched mid-session.
+      staleTime: 1000 * 60 * 60 * 24,
+      // Don't re-fetch just because the user switched tabs
+      refetchOnWindowFocus: false,
+      // Don't re-fetch on component remount if data already exists
+      refetchOnMount: false,
+      // Don't re-fetch on network reconnect
+      refetchOnReconnect: false,
+    },
+  },
+});
 
 function Router() {
   return (
@@ -26,10 +44,8 @@ function Router() {
           <Route path="/battle" component={BattleArena} />
           <Route path="/constellation" component={Constellation} />
           <Route path="/search" component={DNASearch} />
-          {/* Placeholder for /archetypes */}
-          <Route path="/archetypes">
-            <div className="p-24 text-center">Coming soon.</div>
-          </Route>
+          <Route path="/archetypes" component={Archetypes} />
+          <Route path="/quiz" component={Quiz} />
           <Route component={NotFound} />
         </Switch>
       </main>

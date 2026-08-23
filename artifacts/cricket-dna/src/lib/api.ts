@@ -1,0 +1,327 @@
+// src/lib/api.ts
+// ─────────────────────────────────────────────────────────────────────────────
+// All fetch functions that talk to the Express API server.
+// Import these in React Query hooks — never call fetch directly in components.
+//
+// Set VITE_API_URL in .env.local for dev, Vercel env vars for production.
+// Falls back to localhost:3001 if not set.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const API = (import.meta.env.VITE_API_URL ?? "http://localhost:3001").replace(/\/$/, "");
+
+// ─── Generic fetch wrapper ────────────────────────────────────────────────────
+
+/** Thrown when the server returns 429 (daily CricData budget exhausted). */
+export class BudgetExceededError extends Error {
+  constructor() { super("Daily CricData budget exceeded — showing cached data"); }
+}
+
+async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(`${API}${path}`, {
+    headers: { "Content-Type": "application/json" },
+    ...init,
+  });
+  if (res.status === 429) {
+    // Budget exhausted — React Query will keep showing placeholder/stale data
+    throw new BudgetExceededError();
+  }
+  if (!res.ok) {
+    throw new Error(`API ${res.status}: ${path}`);
+  }
+  return res.json() as Promise<T>;
+}
+
+// ─── Types mirroring Express API responses ────────────────────────────────────
+
+export interface LiveCareerStats {
+  matches: number;
+  runs: number;
+  avg: number;
+  sr: number;
+  hundreds: number;
+  fifties: number;
+  hs: number;
+  wickets?: number;
+  economy?: number;
+  bbm?: string;
+}
+
+export interface LivePlayerProfile {
+  cricInfoId: string;
+  name: string;
+  country: string;
+  role: string;
+  age: number;
+  testStats: LiveCareerStats;
+  odiStats: LiveCareerStats;
+  t20Stats: LiveCareerStats;
+  iplStats: { matches: number; runs: number; avg: number; sr: number; sixes: number; fours: number };
+  recentForm: { match: string; score: number; date: string }[];
+}
+
+export interface KNNTwin {
+  id: string;
+  name: string;
+  cricInfoId: string;
+  similarity: number;        // 0–100
+  archetypeId: string;
+  archetype: string;
+  country: string;
+  flag: string;
+}
+
+export interface KNNResult {
+  player: { id: string; name: string; archetypeId: string; archetype: string };
+  twins: KNNTwin[];
+}
+
+export interface ConstellationPoint {
+  id: string;
+  name: string;
+  cricInfoId: string;
+  archetypeId: string;
+  x: number;                 // real t-SNE coordinate
+  y: number;
+  dnaScore: number;
+  flag: string;
+}
+
+export interface BattleData {
+  p1: LivePlayerProfile;
+  p2: LivePlayerProfile;
+  dnaSimilarity: number;
+  archetypeMatch: boolean;
+  reason: string;
+  statComparison?: {
+    winner: string;
+    reason: string;
+  };
+  judge?: {
+    agreement_rate: number;
+    reasoning: string;
+    verdicts: Record<string, string>;
+  };
+  statementMoments: StatementMoment[];
+  headToHead: HeadToHead | null;
+}
+
+export interface StatementMoment {
+  playerId: string;
+  playerName: string;
+  match: string;
+  score: string;
+  context: string;
+  date: string;
+  isKnockout: boolean;
+}
+
+export interface HeadToHead {
+  matchesTogether: number;
+  p1Wins: number;
+  p2Wins: number;
+  draws: number;
+  summary: string;
+}
+
+export interface SearchResult {
+  internalId: string;
+  name: string;
+  cricbuzzPlayerId: string;
+  country: string;
+  flag: string;
+  role: string;
+  archetypeId: string;
+  archetypeName?: string;
+}
+
+export interface ClusterData {
+  id: string;
+  name: string;
+  color: string;
+  description: string;
+  memberCount: number;
+  centroidValues: number[];
+  examplePlayers: string[];
+}
+
+// ─── Player endpoints ─────────────────────────────────────────────────────────
+
+/**
+ * Full live career stats for one player.
+ * Cached 24h server-side — fast after first hit.
+ */
+export const fetchPlayerStats = (cricInfoId: string) =>
+  apiFetch<LivePlayerProfile>(`/api/player/${cricInfoId}/stats`);
+
+/**
+ * Paginated player list with optional filters.
+ * ?format=test|odi|t20  ?cluster=A  ?search=kohli
+ */
+export const fetchPlayers = (params?: {
+  format?: "test" | "odi" | "t20";
+  cluster?: string;
+  search?: string;
+}) => {
+  const q = new URLSearchParams();
+  if (params?.format) q.set("format", params.format);
+  if (params?.cluster) q.set("cluster", params.cluster);
+  if (params?.search) q.set("search", params.search);
+  const qs = q.toString() ? `?${q}` : "";
+  return apiFetch<SearchResult[]>(`/api/players${qs}`);
+};
+
+/**
+ * Fuzzy name search — used in DNASearch and BattleArena PlayerPicker.
+ * Returns lightweight SearchResult[], not full profiles.
+ */
+export const searchPlayers = (query: string) =>
+  apiFetch<SearchResult[]>(`/api/search?q=${encodeURIComponent(query)}`);
+
+// ─── KNN / ML endpoints ───────────────────────────────────────────────────────
+
+/**
+ * DNA twin search — proxied through Express to Python KNN service.
+ * Returns top-k nearest neighbours by cosine similarity on 20-dim vector.
+ */
+export const fetchKNNTwins = (playerId: string, k = 5) =>
+  apiFetch<KNNResult>(`/api/knn?player=${playerId}&k=${k}`);
+
+/**
+ * Archetype assignment for a player — from the K-Means model.
+ */
+export const fetchArchetype = (playerId: string) =>
+  apiFetch<{ archetypeId: string; archetype: string; centroid: number[] }>(
+    `/api/cluster/${playerId}`
+  );
+
+// ─── Constellation ────────────────────────────────────────────────────────────
+
+/**
+ * All players with real t-SNE x,y coordinates.
+ * Replaces the hardcoded x,y values in mockData.ts.
+ * Cached 24h — only changes when ML pipeline re-runs.
+ */
+export const fetchConstellation = () =>
+  apiFetch<ConstellationPoint[]>("/api/constellation");
+
+// ─── Archetypes ───────────────────────────────────────────────────────────────
+
+/**
+ * All 8 cluster definitions with real centroid values from K-Means.
+ */
+export const fetchClusters = () =>
+  apiFetch<ClusterData[]>("/api/clusters");
+
+// ─── Battle Arena ─────────────────────────────────────────────────────────────
+
+/**
+ * Compute battle stats between two players.
+ * Can pass internal IDs or cricInfoIds.
+ * Express backend resolves these and proxies to ML service.
+ */
+export const fetchBattle = (p1Id: string, p2Id: string, algorithms: string[] = ["xgboost", "random_forest"]) => {
+  const query = new URLSearchParams({
+    p1: p1Id,
+    p2: p2Id,
+    algorithms: algorithms.join(","),
+  });
+  return apiFetch<BattleData>(`/api/battle?${query.toString()}`);
+};
+
+/**
+ * Statement moments only — innings > 1.5× career avg in knockout matches.
+ * Cheaper than full battle fetch when only the moments tab is visible.
+ */
+export const fetchStatementMoments = (p1CricInfoId: string, p2CricInfoId: string) =>
+  apiFetch<StatementMoment[]>(
+    `/api/battle/moments?p1=${p1CricInfoId}&p2=${p2CricInfoId}`
+  );
+
+// ─── Budget ──────────────────────────────────────────────────────────────────
+
+export interface BudgetStatusData {
+  date: string;
+  used: number;
+  remaining: number;
+  limit: number;
+}
+
+/** Current CricData daily API usage — safe to poll every few minutes. */
+export const fetchBudgetStatus = () =>
+  apiFetch<BudgetStatusData>("/api/budget");
+
+// ─── Kohli ────────────────────────────────────────────────────────────────────
+
+/**
+ * Kohli-specific data endpoint — career arc by year, shrine stats, 2022 knock.
+ * Separate endpoint so the shrine never waits on general player fetch.
+ */
+export const fetchKohliShrine = () =>
+  apiFetch<{
+    careerArc: { year: number; test: number | null; odi: number | null; t20: number | null }[];
+    records: { value: string; label: string; context: string }[];
+    currentStats: LiveCareerStats;
+  }>("/api/kohli");
+
+// ─── Quiz ─────────────────────────────────────────────────────────────────────
+
+export interface QuizData {
+  quizId: string;
+  title: string;
+  difficulty: string;
+  questions: {
+    id: string;
+    question: string;
+    options: string[];
+  }[];
+  quizToken: string;
+}
+
+export interface QuizResult {
+  totalScore: number;
+  maxScore: number;
+  percentage: number;
+  tier: string;
+  tierEmoji: string;
+  breakdown: {
+    questionId: string;
+    correct: boolean;
+    correctIndex: number;
+    selectedIndex: number;
+    pointsAwarded: number;
+  }[];
+}
+
+export interface QuizLeaderboardEntry {
+  user_id: string | null;
+  score: number;
+  percentage: number;
+  tier: string;
+  created_at: string;
+}
+
+/** Fetch a fresh LLM-generated quiz. Each call generates new questions. */
+export const fetchQuiz = () =>
+  apiFetch<QuizData>("/api/quiz/kohli-fanboy");
+
+/** Submit quiz answers with the signed token. */
+export const submitQuiz = (quizToken: string, answers: { questionId: string; selectedIndex: number }[]) =>
+  apiFetch<QuizResult>("/api/quiz/kohli-fanboy/submit", {
+    method: "POST",
+    body: JSON.stringify({ quizToken, answers }),
+  });
+
+/** Fetch quiz leaderboard. */
+export const fetchQuizLeaderboard = () =>
+  apiFetch<QuizLeaderboardEntry[]>("/api/quiz/kohli-fanboy/leaderboard");
+
+// ─── Algorithms ──────────────────────────────────────────────────────────────
+
+export interface AlgorithmInfo {
+  id: string;
+  description: string;
+}
+
+/** Fetch available ML algorithms (proxied through Express, ML_URL stays server-side). */
+export const fetchAlgorithms = () =>
+  apiFetch<AlgorithmInfo[]>("/api/algorithms");

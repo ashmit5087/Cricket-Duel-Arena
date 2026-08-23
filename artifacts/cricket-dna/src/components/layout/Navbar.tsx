@@ -8,6 +8,7 @@ const links = [
   { href: "/kohli", label: "Kohli" },
   { href: "/battle", label: "Battle" },
   { href: "/search", label: "DNA Search" },
+  { href: "/quiz", label: "Quiz" },
 ];
 
 export function Navbar() {

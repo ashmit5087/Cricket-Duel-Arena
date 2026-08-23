@@ -4,6 +4,11 @@ import { motion, useInView, animate, AnimatePresence } from "framer-motion";
 import { VideoBackground } from "@/components/ui/VideoBackground";
 import { RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, ReferenceArea, Legend } from "recharts";
 import { KOHLI_CAREER, KOHLI_2022_KNOCK, PLAYERS, RADAR_AXES } from "@/data/mockData";
+import { useKohliShrine } from "@/hooks/usePlayerData";
+import DriftWall from "@/components/ui/DriftWall";
+import ScrollExpand from "@/components/ui/ScrollExpand";
+import StrokeText from "@/components/ui/StrokeText";
+import AccordionGallery from "@/components/ui/AccordionGallery";
 
 function CountUpStat({ value, suffix = "", prefix = "" }: { value: number; suffix?: string; prefix?: string }) {
   const ref = useRef<HTMLSpanElement>(null);
@@ -178,7 +183,121 @@ function HeroSection() {
   );
 }
 
-function StatWall() {
+function GallerySection() {
+  const items = [
+    { image: '/gallery/virat 1.jpg', title: 'King Kohli' },
+    { image: '/gallery/virat 2.jpg', title: 'King Kohli' },
+    { image: '/gallery/virat 3.jpg', title: 'King Kohli' },
+    { image: '/gallery/virat 4.jpg', title: 'King Kohli' },
+    { image: '/gallery/virat 6.jpg', title: 'King Kohli' },
+    { image: '/gallery/virat 7.jpg', title: 'King Kohli' },
+    { image: '/gallery/virat 8.jpg', title: 'King Kohli' },
+    { image: '/gallery/virat 9.jpg', title: 'King Kohli' },
+    { image: '/gallery/virat 10.jpg', title: 'King Kohli' },
+    { image: '/gallery/virat 11.jpg', title: 'King Kohli' },
+    { image: '/gallery/virat 12.jpg', title: 'King Kohli' },
+    { image: '/gallery/virat 13.jpg', title: 'King Kohli' },
+    { image: '/gallery/virat 14.jpg', title: 'King Kohli' },
+    { image: '/gallery/virat 15.jpg', title: 'King Kohli' },
+    { image: '/gallery/virat 16.jpg', title: 'King Kohli' },
+    { image: '/gallery/virat 17.jpg', title: 'King Kohli' },
+    { image: '/gallery/virat 18.jpg', title: 'King Kohli' },
+    { image: '/gallery/virat 19.jpg', title: 'King Kohli' },
+    { image: '/gallery/virat 20.jpg', title: 'King Kohli' },
+  ];
+
+  return (
+    <section className="relative w-full bg-[#0a0a0a]">
+      <ScrollExpand
+        src="/gallery/hero.jpg"
+        title="Hall of FAME"
+        scrollHint="Scroll to expand"
+        useWindowScroll={true}
+        mediaZoom={1.2}
+        overlayScrim={0.75}
+        scrollDistance={0.5}
+        holdDistance={0.3}
+      >
+        <div className="w-full h-full flex flex-col items-center justify-center pt-24 px-4 pointer-events-auto">
+          <div className="mb-4 w-full max-w-4xl">
+            <StrokeText
+              text="HALL OF FAME"
+              strokeColor="#c0392b"
+              fillColor="#f5f5f5"
+              strokeWidth={2}
+              drawDuration={1.8}
+              trigger="scroll"
+              fillMode="wipe"
+              fontSize={100}
+              fontWeight={800}
+              style={{ textAlign: 'center' }}
+            />
+          </div>
+          <div style={{ width: '100%', height: '80vh' }} className="relative pointer-events-auto">
+            <DriftWall
+              items={items}
+              columns={5}
+              tileWidth={250}
+              tileHeight={165}
+              gap={22}
+              tilt={16}
+              turn={-14}
+              perspective={1200}
+              depth={120}
+              speed={42}
+              direction="up"
+              variance={0.45}
+              parallax={0.6}
+              lift={64}
+              fade={0.6}
+              dim={0.55}
+              overlayColor="#0a0a0a"
+            />
+          </div>
+          
+          <button 
+            onClick={() => {
+              const el = document.getElementById('stat-wall');
+              if (el) {
+                const top = el.getBoundingClientRect().top + window.scrollY;
+                window.scrollTo({ top, behavior: 'smooth' });
+              }
+            }}
+            className="mt-6 z-50 px-8 py-3 bg-[#c0392b] text-white font-bold uppercase tracking-[0.2em] text-xs hover:bg-[#a93226] transition-colors shadow-[0_0_20px_rgba(192,57,43,0.4)] pointer-events-auto cursor-pointer"
+          >
+            Exit Gallery
+          </button>
+        </div>
+      </ScrollExpand>
+    </section>
+  );
+}
+
+function AccordionGallerySection() {
+  const items = [
+    { image: '/accordion/virat 1.jpg', label: 'Canyon', link: '#' },
+    { image: '/accordion/virat 6.jpg', label: 'Ridgeline', link: '#' },
+    { image: '/accordion/virat 7.jpg', label: 'Falls', link: '#' },
+    { image: '/accordion/virat 11.jpg', label: 'Harbour', link: '#' },
+    { image: '/accordion/virat 16.jpg', label: 'Skyline', link: '#' }
+  ];
+
+  return (
+    <section className="relative py-24 bg-transparent px-4 md:px-12 w-full max-w-7xl mx-auto">
+      <h2 style={{ fontFamily: "'Bebas Neue', sans-serif" }} className="text-4xl md:text-6xl text-[#c0392b] mb-12 text-center tracking-wider">
+        THE JOURNEY
+      </h2>
+      <AccordionGallery
+        items={items}
+        defaultIndex={2}
+        expandRatio={0.52}
+        trigger="hover"
+      />
+    </section>
+  );
+}
+
+function StatWall({ currentODIAvg }: { currentODIAvg: number }) {
   const ref = useRef(null);
   const inView = useInView(ref, { once: true, margin: "-80px" });
   const [spinnerDone, setSpinnerDone] = useState<Record<number, boolean>>({});
@@ -193,7 +312,7 @@ function StatWall() {
 
   const stats = [
     { value: 80, suffix: "", label: "International Centuries", accent: "#c0392b" },
-    { value: 82.7, suffix: "", label: "ODI Chase Average — Highest Ever", accent: "#d4a500" },
+    { value: currentODIAvg, suffix: "", label: "ODI Chase Average — Highest Ever", accent: "#d4a500" },
     { value: 500, suffix: "+", label: "International Appearances", accent: "#c0392b" },
     { value: 12040, suffix: "+", label: "Test Runs — Still Climbing", accent: "#d4a500" },
     { value: 0, suffix: "", label: "ICC Tournaments Without Impact", accent: "#c0392b" },
@@ -201,7 +320,7 @@ function StatWall() {
   ];
 
   return (
-    <section ref={ref} className="relative py-0" style={{ background: "rgba(4,4,4,0.90)" }} data-testid="stat-wall">
+    <section id="stat-wall" ref={ref} className="relative py-0" style={{ background: "rgba(4,4,4,0.90)" }} data-testid="stat-wall">
       {/* Ghost KOHLI background */}
       <div className="absolute inset-0 overflow-hidden select-none pointer-events-none flex items-center justify-center">
         <span style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "min(55vw,520px)", color: "#c0392b", opacity: 0.022, letterSpacing: "-0.02em", lineHeight: 1 }}>
@@ -544,7 +663,7 @@ function ConstellationSpot() {
   );
 }
 
-function CareerArc() {
+function CareerArc({ careerArc }: { careerArc: { year: number; test: number | null; odi: number | null; t20: number | null }[] }) {
   const ref = useRef(null);
   const inView = useInView(ref, { once: true, margin: "-80px" });
 
@@ -564,7 +683,7 @@ function CareerArc() {
 
         {inView && (
           <ResponsiveContainer width="100%" height={320}>
-            <LineChart data={KOHLI_CAREER} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
+            <LineChart data={careerArc} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#1a1a1a" />
               <XAxis dataKey="year" stroke="#444" tick={{ fontSize: 11, fill: "#555" }} />
               <YAxis stroke="#444" tick={{ fontSize: 11, fill: "#555" }} />
@@ -697,11 +816,20 @@ function MCGMoment() {
   );
 }
 
-function RecordWall() {
+function RecordWall({ recordsOverride }: { recordsOverride?: { value: string; label: string; context: string }[] }) {
   const ref = useRef(null);
   const inView = useInView(ref, { once: true, margin: "-80px" });
 
-  const records = [
+  const records = recordsOverride && recordsOverride.length > 0
+    ? recordsOverride.map((r, i) => ({
+      value: r.value,
+      label: r.label,
+      badge: "Live",
+      sub: "Updated stats",
+      color: i % 2 === 0 ? "#c0392b" : "#d4a500",
+      context: r.context,
+    }))
+    : [
     {
       value: "82.7",
       label: "ODI Chase Average",
@@ -1202,9 +1330,17 @@ function CareerTimeline() {
 }
 
 export default function KohliShrine() {
+  const kohli = PLAYERS.find((p) => p.id === "virat-kohli")!;
+  const { data: shrineData } = useKohliShrine();
+
+  const careerArc = shrineData?.careerArc ?? KOHLI_CAREER;
+  // Use live ODI avg from shrine endpoint — avoids a second API call
+  const currentODIAvg = shrineData?.currentStats?.avg ?? kohli.odiStats.avg;
+
   return (
     <div className="bg-[#0a0a0a]" data-testid="kohli-shrine">
       <HeroSection />
+      <GallerySection />
       {/* All sections below hero share a live video background */}
       <div className="relative">
         <VideoBackground
@@ -1212,13 +1348,14 @@ export default function KohliShrine() {
           opacity={0.32}
           overlayOpacity={0.82}
         />
-        <StatWall />
+        <StatWall currentODIAvg={currentODIAvg} />
         <QuoteStrip />
         <ConstellationSpot />
-        <CareerArc />
+        <CareerArc careerArc={careerArc} />
+        <AccordionGallerySection />
         <MCGMoment />
         <CareerTimeline />
-        <RecordWall />
+        <RecordWall recordsOverride={shrineData?.records} />
         <DNARadarSection />
         <ChallengeCTA />
       </div>

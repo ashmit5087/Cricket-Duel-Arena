@@ -1,0 +1,11 @@
+# Updated for Python 3.14 compatibility
+# Use numpy 2.x and latest scipy/sklearn which have 3.13+ support
+fastapi==0.115.0
+uvicorn[standard]==0.32.0
+numpy>=2.1.0
+scikit-learn>=1.5.2
+pandas>=2.2.3
+scipy>=1.14.0
+requests==2.32.3
+python-dotenv==1.0.1
+joblib>=1.4.2

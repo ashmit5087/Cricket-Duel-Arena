@@ -42,7 +42,7 @@ function HeroSection() {
   return (
     <section
       ref={heroRef}
-      className="relative overflow-hidden flex flex-col items-start justify-center min-h-screen px-8 md:px-16 lg:px-24"
+      className="relative overflow-hidden flex flex-col items-start justify-end min-h-screen px-8 md:px-16 lg:px-24 pb-20"
       data-testid="hero-section"
     >
       <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden" aria-hidden>
@@ -52,23 +52,41 @@ function HeroSection() {
           loop
           playsInline
           className="absolute inset-0 w-full h-full object-cover"
-          style={{ opacity: 0.52 }}
+          style={{ opacity: 0.82 }}
         >
-          <source src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260505_105838_084968f2-4415-42a4-971a-3bec54539549.mp4" type="video/mp4" />
+          <source src="/stadium-hero.mp4" type="video/mp4" />
         </video>
-        <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, rgba(10,10,10,0.45) 0%, rgba(10,10,10,0.72) 50%, rgba(10,10,10,1) 100%)" }} />
+        {/* top vignette – keeps sky legible; heavy bottom block anchors the text */}
+        <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, rgba(4,6,10,0.55) 0%, rgba(4,6,10,0.15) 38%, rgba(4,6,10,0.55) 65%, rgba(4,6,10,0.92) 100%)" }} />
       </div>
 
-      <div className="absolute inset-0 flex items-center justify-center z-0 pointer-events-none select-none overflow-hidden" aria-hidden>
-        <span style={{ fontSize: "clamp(200px,30vw,450px)", color: "rgba(255,255,255,0.025)", fontFamily: "Playfair Display, Georgia, serif", fontWeight: 900, lineHeight: 1, userSelect: "none" }}>18</span>
+      {/* large ghosted number – pushed toward top so it reads against the stadium sky */}
+      <div className="absolute top-0 inset-x-0 flex items-start justify-end z-0 pointer-events-none select-none overflow-hidden pr-16 pt-8" aria-hidden>
+        <span style={{ fontSize: "clamp(160px,22vw,360px)", color: "rgba(255,255,255,0.03)", fontFamily: "Playfair Display, Georgia, serif", fontWeight: 900, lineHeight: 1, userSelect: "none" }}>18</span>
       </div>
 
-      <div className="relative z-10 max-w-5xl">
-        <div className="mb-3">
-          <span className="text-xs tracking-[0.25em] text-[#c0392b] uppercase font-medium">AI Cricket Intelligence Platform</span>
+      <div className="relative z-10 max-w-5xl w-full">
+        <div className="mb-4">
+          <span
+            className="text-xs tracking-[0.3em] uppercase font-semibold"
+            style={{
+              color: "#e8b84b",
+              textShadow: "0 0 18px rgba(232,184,75,0.55), 0 1px 3px rgba(0,0,0,0.8)",
+            }}
+          >
+            AI Cricket Intelligence Platform
+          </span>
         </div>
 
-        <h1 className="font-serif mb-6 leading-none" style={{ fontSize: "clamp(40px,8vw,110px)", color: "#f5f5f5" }} data-testid="hero-headline">
+        <h1
+          className="font-serif mb-5 leading-none"
+          style={{
+            fontSize: "clamp(38px,7.5vw,105px)",
+            color: "#f0ede6",
+            textShadow: "0 2px 24px rgba(0,0,0,0.85), 0 1px 4px rgba(0,0,0,0.9)",
+          }}
+          data-testid="hero-headline"
+        >
           {["Not", "a", "batter.", "Not", "a", "captain.", "A", "standard."].map((word, i) => (
             <span key={i} className="inline-block overflow-hidden mr-[0.25em] last:mr-0">
               <span className="hero-word inline-block">{word}</span>
@@ -76,11 +94,16 @@ function HeroSection() {
           ))}
         </h1>
 
-        <div className="flex items-center gap-3 mb-5 text-lg md:text-2xl text-[#888]" style={{ perspective: "1000px" }}>
+        <div
+          className="flex items-center gap-3 mb-5 text-lg md:text-2xl"
+          style={{ perspective: "1000px", color: "rgba(220,210,190,0.75)", textShadow: "0 1px 6px rgba(0,0,0,0.9)" }}
+        >
           <span>Cricket DNA measures</span>
           <span
-            className="inline-block font-medium text-[#f5f5f5] transition-all duration-300"
+            className="inline-block font-semibold"
             style={{
+              color: "#e8b84b",
+              textShadow: "0 0 14px rgba(232,184,75,0.45), 0 1px 4px rgba(0,0,0,0.9)",
               transformStyle: "preserve-3d",
               transform: flipping ? "rotateX(-90deg)" : "rotateX(0deg)",
               transition: "transform 0.35s ease",
@@ -91,24 +114,39 @@ function HeroSection() {
           </span>
         </div>
 
-        <p className="text-sm md:text-base text-[#666] mb-10 max-w-xl leading-relaxed">
+        <p className="text-sm md:text-base mb-10 max-w-xl leading-relaxed" style={{ color: "rgba(190,180,160,0.72)", textShadow: "0 1px 6px rgba(0,0,0,0.9)" }}>
           80 international centuries. 500+ matches. One archetype: The Pressure Architect.
         </p>
 
         <div className="flex gap-4 flex-wrap mb-14">
           <Link href="/constellation">
-            <button className="px-7 py-3 text-sm font-semibold tracking-widest uppercase bg-[#c0392b] text-white hover:bg-[#a93226] transition-colors" data-testid="cta-constellation">
+            <button
+              className="px-7 py-3 text-sm font-semibold tracking-widest uppercase text-white transition-all"
+              style={{ background: "#c0392b", boxShadow: "0 0 20px rgba(192,57,43,0.45)" }}
+              onMouseEnter={e => (e.currentTarget.style.background = "#a93226")}
+              onMouseLeave={e => (e.currentTarget.style.background = "#c0392b")}
+              data-testid="cta-constellation"
+            >
               Explore Constellation →
             </button>
           </Link>
           <Link href="/kohli">
-            <button className="px-7 py-3 text-sm font-semibold tracking-widest uppercase border border-[#d4a500] text-[#d4a500] hover:bg-[#d4a500]/10 transition-colors" data-testid="cta-shrine">
+            <button
+              className="px-7 py-3 text-sm font-semibold tracking-widest uppercase transition-all"
+              style={{ border: "1px solid #e8b84b", color: "#e8b84b", boxShadow: "0 0 16px rgba(232,184,75,0.2)", background: "transparent" }}
+              onMouseEnter={e => { e.currentTarget.style.background = "rgba(232,184,75,0.1)"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+              data-testid="cta-shrine"
+            >
               Enter the Shrine ↗
             </button>
           </Link>
         </div>
 
-        <div className="flex gap-8 text-center">
+        <div
+          className="flex gap-8 text-center pt-6 border-t"
+          style={{ borderColor: "rgba(255,255,255,0.08)" }}
+        >
           {[
             { value: "80", label: "Centuries" },
             { value: "82.7", label: "ODI Chase Avg" },
@@ -116,8 +154,13 @@ function HeroSection() {
             { value: "1", label: "GOAT" },
           ].map((s) => (
             <div key={s.label} data-testid={`stat-${s.label}`}>
-              <div className="text-2xl md:text-3xl font-bold text-[#c0392b]">{s.value}</div>
-              <div className="text-xs text-[#666] tracking-widest uppercase mt-1">{s.label}</div>
+              <div
+                className="text-2xl md:text-3xl font-bold"
+                style={{ color: "#e8b84b", textShadow: "0 0 12px rgba(232,184,75,0.5)" }}
+              >
+                {s.value}
+              </div>
+              <div className="text-xs tracking-widest uppercase mt-1" style={{ color: "rgba(180,170,150,0.65)" }}>{s.label}</div>
             </div>
           ))}
         </div>
@@ -239,7 +282,7 @@ function StackingCards() {
             cards.length - 1,
             Math.floor(self.progress * cards.length)
           );
-          setActiveCard(idx);
+          setActiveCard((prev) => (prev === idx ? prev : idx));
         },
       });
 
@@ -419,9 +462,11 @@ function HorizontalGallery() {
           trigger: section,
           start: "top top",
           end: () => "+=" + (track.scrollWidth - window.innerWidth + 128),
-          scrub: 1.8,
+          scrub: 1.2,
           pin: true,
           anticipatePin: 1,
+          fastScrollEnd: true,
+          invalidateOnRefresh: true,
         },
       });
 
@@ -554,7 +599,8 @@ function TickerText() {
           trigger: section,
           start: "top bottom",
           end: "bottom top",
-          scrub: 2,
+          scrub: 0.6,
+          fastScrollEnd: true,
         },
       });
 
