@@ -37,7 +37,7 @@ services:
     runtime: node
     rootDir: artifacts/api-server
     buildCommand: pnpm install && pnpm build
-    startCommand: pnpm start
+    startCommand: node dist/db/migrate.js && node dist/index.js
     plan: free
     healthCheckPath: /health
     envVars:
@@ -89,33 +89,4 @@ services:
       - key: KEEP_ALIVE_ENABLED
         value: "true"
 
-  # ── One-time DB schema + seed (run manually after first deploy) ──────────────
-  - type: worker
-    name: cricket-dna-migrate
-    runtime: node
-    rootDir: artifacts/api-server
-    buildCommand: pnpm install && pnpm build
-    startCommand: pnpm db:migrate
-    plan: free
-    autoDeploy: false
-    envVars:
-      - key: POSTGRES_HOST
-        fromDatabase:
-          name: cricket-dna-postgres
-          property: host
-      - key: POSTGRES_PORT
-        fromDatabase:
-          name: cricket-dna-postgres
-          property: port
-      - key: POSTGRES_DB
-        fromDatabase:
-          name: cricket-dna-postgres
-          property: database
-      - key: POSTGRES_USER
-        fromDatabase:
-          name: cricket-dna-postgres
-          property: user
-      - key: POSTGRES_PASSWORD
-        fromDatabase:
-          name: cricket-dna-postgres
-          property: password
+  # migrate runs automatically before the API starts (see startCommand above)

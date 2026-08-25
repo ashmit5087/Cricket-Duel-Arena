@@ -102,10 +102,16 @@ async function migrate() {
   });
 
   logger.info("[migrate] ✅ Migration complete");
-  await pool.end();
+  // Only close the pool when running as a standalone script.
+  // When called programmatically from index.ts the server reuses the pool.
+  if (require.main === module) await pool.end();
 }
 
-migrate().catch((e) => {
-  logger.error("[migrate] FAILED", { error: e.message });
-  process.exit(1);
-});
+if (require.main === module) {
+  migrate().catch((e) => {
+    logger.error("[migrate] FAILED", { error: e.message });
+    process.exit(1);
+  });
+}
+
+export { migrate };

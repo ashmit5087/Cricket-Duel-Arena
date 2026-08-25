@@ -7,6 +7,7 @@ import { createServer } from "http";
 import cors from "cors";
 import { logger } from "./utils/logger";
 import { healthCheck as pgHealth } from "./db/postgres";
+import { migrate } from "./db/migrate";
 import { redisHealthCheck } from "./db/redis";
 import { initSocketServer } from "./services/socket";
 import { startPoller, getPollerStatus } from "./workers/poller";
@@ -28,11 +29,25 @@ const PORT       = process.env.PORT ?? 3001;
 // ── Middleware ────────────────────────────────────────────────────────────────
 
 app.use(cors({
-  origin: [
-    "http://localhost:5173",
-    "http://localhost:3000",
-    process.env.FRONTEND_URL ?? "",
-  ].filter(Boolean),
+  origin: (origin, callback) => {
+    const allowed = [
+      "http://localhost:5173",
+      "http://localhost:3000",
+      process.env.FRONTEND_URL,
+    ].filter(Boolean) as string[];
+
+    // Allow requests with no origin (mobile apps, curl, Render health checks)
+    if (!origin) return callback(null, true);
+    if (allowed.includes(origin)) return callback(null, true);
+
+    // In production with no FRONTEND_URL set yet, allow all *.vercel.app
+    // origins temporarily so the initial deploy isn't blocked
+    if (!process.env.FRONTEND_URL && origin.endsWith(".vercel.app")) {
+      return callback(null, true);
+    }
+
+    callback(new Error(`CORS: origin ${origin} not allowed`));
+  },
   credentials: true,
 }));
 app.use(express.json({ limit: "1mb" }));
@@ -149,9 +164,12 @@ async function boot() {
   // 1. Verify infrastructure
   logger.info("[boot] Checking infrastructure...");
 
-  // PostgreSQL — battle history + rivalries (docker compose up postgres)
+  // PostgreSQL — connect + auto-migrate schema on every deploy
   const pgOk = await pgHealth();
   logger.info(pgOk ? "[boot] ✅ PostgreSQL connected" : "[boot] ⚠️  PostgreSQL unavailable — run: docker compose up -d postgres");
+  if (pgOk) {
+    await migrate();
+  }
 
   // Redis — cache + daily budget counter (docker compose up redis)
   // Give the lazy connection a moment to establish before logging status
