@@ -1,12 +1,12 @@
 # ============================================================
 # Cricket DNA — Render Blueprint
-# Deploys: PostgreSQL + Redis + ML service + API server
+# Deploys: PostgreSQL + Key Value (Redis) + ML service + API server
 #
 # Usage:
-#   1. Push this file to the repo root (already there)
+#   1. Push this file to the repo root
 #   2. Render Dashboard → New → Blueprint → select this repo
 #   3. Fill in the sync:false env vars when prompted
-#   4. Frontend deploys separately on Vercel (see README notes)
+#   4. Frontend deploys separately on Vercel
 # ============================================================
 
 databases:
@@ -14,14 +14,14 @@ databases:
     databaseName: cricket_dna
     user: cricket_admin
     plan: free
-    # Schema is applied via the API server's preDeployJob below
-
-  - name: cricket-dna-redis
-    type: keyvalue
-    plan: free
-    ipAllowList: []   # only allow internal connections (Render Key Value store)
 
 services:
+  # ── Key Value store (Redis-compatible) ──────────────────────────────────────
+  - type: keyvalue
+    name: cricket-dna-redis
+    plan: free
+    ipAllowList: []
+
   # ── ML service (FastAPI, Docker) ────────────────────────────────────────────
   - type: web
     name: cricket-dna-ml
@@ -46,7 +46,9 @@ services:
         sync: false
       - key: GEMINI_API_KEY
         sync: false
-      # ── Internal service wiring (auto-filled by Render) ──
+      - key: FRONTEND_URL
+        sync: false            # paste your Vercel URL after frontend deploys
+      # ── Key Value (Redis) wiring ──
       - key: REDIS_HOST
         fromService:
           name: cricket-dna-redis
@@ -62,6 +64,7 @@ services:
           name: cricket-dna-redis
           type: keyvalue
           property: password
+      # ── Postgres wiring ──
       - key: POSTGRES_HOST
         fromDatabase:
           name: cricket-dna-postgres
@@ -82,30 +85,29 @@ services:
         fromDatabase:
           name: cricket-dna-postgres
           property: password
+      # ── ML service wiring ──
       - key: ML_URL
         fromService:
           name: cricket-dna-ml
           type: web
           property: hostport
       # ── App config ──
-      - key: CRICDATA_DAILY_LIMIT
-        value: "100"
       - key: NODE_ENV
         value: production
+      - key: CRICDATA_DAILY_LIMIT
+        value: "100"
       - key: KEEP_ALIVE_ENABLED
-        value: "true"          # self-ping every 10 min — prevents Render free-tier sleep
-      - key: FRONTEND_URL
-        sync: false          # paste your Vercel URL, e.g. https://cricket-dna.vercel.app
+        value: "true"
 
-  # ── One-time DB schema + seed job ───────────────────────────────────────────
-  - type: pserv
+  # ── One-time DB schema + seed (run manually after first deploy) ──────────────
+  - type: worker
     name: cricket-dna-migrate
     runtime: node
     rootDir: artifacts/api-server
     buildCommand: pnpm install && pnpm build
     startCommand: pnpm db:migrate
-    plan: starter
-    autoDeploy: false       # run manually from the dashboard when schema changes
+    plan: free
+    autoDeploy: false
     envVars:
       - key: POSTGRES_HOST
         fromDatabase:
