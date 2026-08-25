@@ -155,7 +155,9 @@ async function callGemini(prompt: string): Promise<any> {
     throw new Error(`Gemini API ${res.status}: ${res.statusText}`);
   }
 
-  const body = await res.json();
+  const body = (await res.json()) as {
+    candidates?: { content?: { parts?: { text?: string }[] } }[];
+  };
   const text = body.candidates?.[0]?.content?.parts?.[0]?.text;
 
   if (!text) {

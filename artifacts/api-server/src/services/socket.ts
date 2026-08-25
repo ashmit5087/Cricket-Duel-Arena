@@ -77,7 +77,7 @@ export function initSocketServer(httpServer: HttpServer): SocketServer {
 
 function subscribeToRedis(): void {
   const channels = Object.values(CHANNELS);
-  redisSub.subscribe(...channels, (err) => {
+  redisSub.subscribe(...channels, (err: any) => {
     if (err) logger.error("[socket] Redis subscribe failed", { error: err.message });
     else logger.info(`[socket] Subscribed to ${channels.length} Redis channels`);
   });

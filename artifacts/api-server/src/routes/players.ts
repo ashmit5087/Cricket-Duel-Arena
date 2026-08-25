@@ -80,8 +80,8 @@ async function buildNormalisedPlayer(
 
   try {
     const [mlCluster, mlElo] = await Promise.allSettled([
-      fetch(`${ML_URL}/cluster/${roster.cricbuzzPlayerId}`).then((r) => r.json()),
-      fetch(`${ML_URL}/elo/${roster.cricbuzzPlayerId}`).then((r) => r.json()),
+      fetch(`${ML_URL}/cluster/${roster.cricbuzzPlayerId}`).then((r) => r.json() as Promise<{ dnaScore?: number; playerVector?: number[] }>),
+      fetch(`${ML_URL}/elo/${roster.cricbuzzPlayerId}`).then((r) => r.json() as Promise<{ rating?: number }>),
     ]);
     if (mlCluster.status === "fulfilled") {
       dnaScore    = mlCluster.value?.dnaScore    ?? dnaScore;

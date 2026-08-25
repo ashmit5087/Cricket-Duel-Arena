@@ -1,0 +1,127 @@
+# ============================================================
+# Cricket DNA — Render Blueprint
+# Deploys: PostgreSQL + Redis + ML service + API server
+#
+# Usage:
+#   1. Push this file to the repo root (already there)
+#   2. Render Dashboard → New → Blueprint → select this repo
+#   3. Fill in the sync:false env vars when prompted
+#   4. Frontend deploys separately on Vercel (see README notes)
+# ============================================================
+
+databases:
+  - name: cricket-dna-postgres
+    databaseName: cricket_dna
+    user: cricket_admin
+    plan: free
+    # Schema is applied via the API server's preDeployJob below
+
+  - name: cricket-dna-redis
+    type: redis
+    plan: free
+    ipAllowList: []   # only allow internal connections
+
+services:
+  # ── ML service (FastAPI, Docker) ────────────────────────────────────────────
+  - type: web
+    name: cricket-dna-ml
+    runtime: docker
+    dockerfilePath: artifacts/ml/Dockerfile
+    dockerContext: artifacts/ml
+    plan: free
+    healthCheckPath: /health
+
+  # ── API server (Node/Express) ───────────────────────────────────────────────
+  - type: web
+    name: cricket-dna-api
+    runtime: node
+    rootDir: artifacts/api-server
+    buildCommand: pnpm install && pnpm build
+    startCommand: pnpm start
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      # ── Secrets — paste these in the Render dashboard ──
+      - key: CRICDATA_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      # ── Internal service wiring (auto-filled by Render) ──
+      - key: REDIS_HOST
+        fromService:
+          name: cricket-dna-redis
+          type: redis
+          property: host
+      - key: REDIS_PORT
+        fromService:
+          name: cricket-dna-redis
+          type: redis
+          property: port
+      - key: REDIS_PASSWORD
+        fromService:
+          name: cricket-dna-redis
+          type: redis
+          property: password
+      - key: POSTGRES_HOST
+        fromDatabase:
+          name: cricket-dna-postgres
+          property: host
+      - key: POSTGRES_PORT
+        fromDatabase:
+          name: cricket-dna-postgres
+          property: port
+      - key: POSTGRES_DB
+        fromDatabase:
+          name: cricket-dna-postgres
+          property: database
+      - key: POSTGRES_USER
+        fromDatabase:
+          name: cricket-dna-postgres
+          property: user
+      - key: POSTGRES_PASSWORD
+        fromDatabase:
+          name: cricket-dna-postgres
+          property: password
+      - key: ML_URL
+        fromService:
+          name: cricket-dna-ml
+          type: web
+          property: hostport
+      # ── App config ──
+      - key: CRICDATA_DAILY_LIMIT
+        value: "100"
+      - key: NODE_ENV
+        value: production
+      - key: FRONTEND_URL
+        sync: false          # paste your Vercel URL, e.g. https://cricket-dna.vercel.app
+
+  # ── One-time DB schema + seed job ───────────────────────────────────────────
+  - type: pserv
+    name: cricket-dna-migrate
+    runtime: node
+    rootDir: artifacts/api-server
+    buildCommand: pnpm install && pnpm build
+    startCommand: pnpm db:migrate
+    plan: starter
+    autoDeploy: false       # run manually from the dashboard when schema changes
+    envVars:
+      - key: POSTGRES_HOST
+        fromDatabase:
+          name: cricket-dna-postgres
+          property: host
+      - key: POSTGRES_PORT
+        fromDatabase:
+          name: cricket-dna-postgres
+          property: port
+      - key: POSTGRES_DB
+        fromDatabase:
+          name: cricket-dna-postgres
+          property: database
+      - key: POSTGRES_USER
+        fromDatabase:
+          name: cricket-dna-postgres
+          property: user
+      - key: POSTGRES_PASSWORD
+        fromDatabase:
+          name: cricket-dna-postgres
+          property: password

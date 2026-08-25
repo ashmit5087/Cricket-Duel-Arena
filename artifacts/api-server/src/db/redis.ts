@@ -1,3 +1,4 @@
+import Redis from "ioredis";
 import NodeCache from "node-cache";
 import { logger } from "../utils/logger";
 
@@ -25,101 +26,118 @@ export const CHANNELS = {
   AURA_UPDATE:   "cricket:aura",
 };
 
-// ── In-memory store (node-cache) ──────────────────────────────────────────────
-// Used as the sole backend when Redis is not configured.
-// node-cache is already in package.json dependencies.
+// ── In-memory fallback (used only when Redis is unreachable) ──────────────────
 
 const mem = new NodeCache({ useClones: false });
+const permanentMem = new NodeCache({ useClones: false });
 
-// Permanent key store (TTL = 0 = never expires in NodeCache)
-const permanent = new NodeCache({ useClones: false });
+let redisAvailable = false;
 
-logger.info("[cache] Running with in-memory cache (Redis not required)");
-
-// ── Redis stub — keeps imports working in routes that use `redis` directly ────
-// (e.g. `redis.set(key, value)` for permanent CricData ID mappings)
-
-export const redis = {
-  set: async (key: string, value: string) => {
-    permanent.set(key, value);
-    return "OK";
+const redisClient = new Redis({
+  host:     process.env.REDIS_HOST     ?? "localhost",
+  port:     parseInt(process.env.REDIS_PORT ?? "6379"),
+  password: process.env.REDIS_PASSWORD ?? undefined,
+  db:       0,
+  retryStrategy: (times) => {
+    if (times > 5) return null;   // stop retrying after 5 attempts
+    return Math.min(times * 500, 3000);
   },
-  get: async (key: string): Promise<string | null> => {
-    return permanent.get<string>(key) ?? null;
-  },
-  incr: async (key: string): Promise<number> => {
-    const current = (mem.get<number>(key) ?? 0) + 1;
-    const ttl = mem.getTtl(key);
-    if (ttl !== undefined && ttl !== 0) {
-      mem.set(key, current, Math.ceil((ttl - Date.now()) / 1000));
-    } else {
-      mem.set(key, current);
-    }
-    return current;
-  },
-  expire: async (key: string, seconds: number): Promise<void> => {
-    const value = mem.get(key);
-    if (value !== undefined) mem.set(key, value, seconds);
-  },
-  ping: async () => "PONG",
-  // Socket.io pub/sub stubs (no-op without Redis)
-  publish:   async () => 0,
-  subscribe: async () => {},
-  on:        () => {},
-};
+  maxRetriesPerRequest: 1,
+  lazyConnect: true,
+  enableOfflineQueue: false,
+});
 
-// Stub pub/sub clients used by socket service
-export const redisPub = redis;
-export const redisSub = redis;
+redisClient.on("connect", () => {
+  redisAvailable = true;
+  logger.info("[redis] Connected");
+});
+redisClient.on("error", () => {
+  // Silent — logged once below on first failure
+});
+redisClient.on("end", () => {
+  if (redisAvailable) logger.warn("[redis] Connection closed — falling back to in-memory cache");
+  redisAvailable = false;
+});
 
-// ── Cache helpers ─────────────────────────────────────────────────────────────
+// Attempt connection; never crash the server if Redis is down
+redisClient.connect().catch(() => {
+  redisAvailable = false;
+  logger.warn("[cache] Redis unavailable — using in-memory cache (budget counter resets on restart)");
+});
+
+// ── Unified cache helpers — route to Redis or memory transparently ────────────
 
 export async function cacheSet(
   key: string,
   value: unknown,
   ttlSeconds?: number
 ): Promise<void> {
+  const serialized = JSON.stringify(value);
   try {
+    if (!redisAvailable) throw new Error("redis down");
     if (ttlSeconds && ttlSeconds > 0) {
-      mem.set(key, value, ttlSeconds);
+      await redisClient.setex(key, ttlSeconds, serialized);
     } else {
-      permanent.set(key, value);
+      await redisClient.set(key, serialized);
     }
-  } catch (e: any) {
-    logger.warn("[cache] cacheSet failed", { key, error: e.message });
+  } catch {
+    if (ttlSeconds && ttlSeconds > 0) mem.set(key, value, ttlSeconds);
+    else permanentMem.set(key, value);
   }
 }
 
 export async function cacheGet<T>(key: string): Promise<T | null> {
   try {
-    return mem.get<T>(key) ?? permanent.get<T>(key) ?? null;
+    if (!redisAvailable) throw new Error("redis down");
+    const raw = await redisClient.get(key);
+    if (!raw) return null;
+    return JSON.parse(raw) as T;
   } catch {
-    return null;
+    return mem.get<T>(key) ?? permanentMem.get<T>(key) ?? null;
   }
 }
 
 export async function cacheDel(key: string): Promise<void> {
+  try {
+    if (redisAvailable) await redisClient.del(key);
+  } catch { /* ignore */ }
   mem.del(key);
-  permanent.del(key);
+  permanentMem.del(key);
 }
 
-export async function publish(_channel: string, _data: unknown): Promise<void> {
-  // no-op without Redis pub/sub
+export async function publish(channel: string, data: unknown): Promise<void> {
+  try {
+    if (redisAvailable) await redisClient.publish(channel, JSON.stringify(data));
+  } catch { /* pub/sub unavailable — no-op */ }
 }
 
 export async function redisHealthCheck(): Promise<boolean> {
-  return true; // in-memory always "healthy"
+  try {
+    if (!redisAvailable) return false;
+    const pong = await redisClient.ping();
+    return pong === "PONG";
+  } catch {
+    return false;
+  }
 }
 
-// ── Budget helpers ────────────────────────────────────────────────────────────
+// ── Budget helpers (used by CricData rate-limiter) ────────────────────────────
 
 /**
  * Atomically increments a daily budget counter.
- * In-memory: resets automatically when the process restarts (fine for dev).
+ * Uses Redis INCR when available; falls back to in-memory otherwise.
+ * The in-memory fallback resets on restart — acceptable for dev,
+ * but production should run Redis (docker compose up redis).
  */
 export async function budgetIncr(key: string, _limit: number): Promise<number> {
+  if (redisAvailable) {
+    const count = await redisClient.incr(key);
+    if (count === 1) await redisClient.expire(key, 86400);
+    return count;
+  }
+
+  // In-memory fallback with 24h TTL on first increment
   const current = (mem.get<number>(key) ?? 0) + 1;
-  // Set 24h TTL on first increment so counter resets next day
   const existingTtl = mem.getTtl(key);
   if (!existingTtl || existingTtl === 0) {
     mem.set(key, current, 86400);
@@ -130,9 +148,65 @@ export async function budgetIncr(key: string, _limit: number): Promise<number> {
   return current;
 }
 
-/**
- * Returns the current value of a budget counter without modifying it.
- */
 export async function getBudgetCount(key: string): Promise<number> {
+  if (redisAvailable) {
+    const raw = await redisClient.get(key);
+    return raw ? parseInt(raw, 10) : 0;
+  }
   return mem.get<number>(key) ?? 0;
 }
+
+// ── Exported client for code that needs raw access ────────────────────────────
+// (e.g. permanent CricData ID mappings, socket.ts pub/sub)
+
+export const redis = {
+  set: async (key: string, value: string) => {
+    if (redisAvailable) await redisClient.set(key, value);
+    else permanentMem.set(key, value);
+    return "OK";
+  },
+  get: async (key: string): Promise<string | null> => {
+    if (redisAvailable) return redisClient.get(key);
+    return permanentMem.get<string>(key) ?? null;
+  },
+  incr: budgetIncr,
+  expire: async (key: string, seconds: number) => {
+    if (redisAvailable) await redisClient.expire(key, seconds);
+  },
+  ping: async () => (redisAvailable ? redisClient.ping() : "PONG"),
+  // Pub/sub passthroughs — socket.ts uses these; they silently no-op
+  // when Redis is unavailable (live tickers just won't broadcast).
+  publish:   (...args: Parameters<typeof redisClient.publish>) =>
+    redisAvailable ? redisClient.publish(...args) : 0 as any,
+  subscribe: (...args: any[]) => {
+    if (redisAvailable) return (redisSubClient as any).subscribe(...args);
+  },
+  on: (_event: string, _cb: (...args: any[]) => void) => {},
+};
+
+// Dedicated subscriber connection (Redis requires separate conn for pub/sub)
+const redisSubClient = new Redis({
+  host:     process.env.REDIS_HOST     ?? "localhost",
+  port:     parseInt(process.env.REDIS_PORT ?? "6379"),
+  password: process.env.REDIS_PASSWORD ?? undefined,
+  db:       0,
+  lazyConnect: true,
+  enableOfflineQueue: false,
+  retryStrategy: () => null,   // don't spam retries for the subscriber
+});
+
+redisSubClient.on("error", () => { /* silent */ });
+
+export const redisPub = new Redis({
+  host:     process.env.REDIS_HOST     ?? "localhost",
+  port:     parseInt(process.env.REDIS_PORT ?? "6379"),
+  password: process.env.REDIS_PASSWORD ?? undefined,
+  db:       0,
+  lazyConnect: true,
+  enableOfflineQueue: false,
+  retryStrategy: () => null,
+});
+
+redisPub.on("error", () => { /* silent */ });
+
+export const redisSub = redisSubClient;

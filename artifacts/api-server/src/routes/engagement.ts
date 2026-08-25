@@ -4,7 +4,7 @@ import { query } from "../db/postgres";
 import { logger } from "../utils/logger";
 import { PLAYER_ROSTER, computeAuraLabel, AURA_LABELS } from "../models/player";
 
-export const engagementRouter = Router();
+export const engagementRouter: Router = Router();
 
 // ── AURA ──────────────────────────────────────────────────────────────────────
 

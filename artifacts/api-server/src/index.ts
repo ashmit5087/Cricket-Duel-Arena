@@ -148,12 +148,15 @@ async function boot() {
   // 1. Verify infrastructure
   logger.info("[boot] Checking infrastructure...");
 
-  // PostgreSQL — optional
+  // PostgreSQL — battle history + rivalries (docker compose up postgres)
   const pgOk = await pgHealth();
-  logger.info(pgOk ? "[boot] ✅ PostgreSQL connected" : "[boot] ⚠️  PostgreSQL skipped — battle history disabled");
+  logger.info(pgOk ? "[boot] ✅ PostgreSQL connected" : "[boot] ⚠️  PostgreSQL unavailable — run: docker compose up -d postgres");
 
-  // Cache — always healthy (in-memory fallback)
-  logger.info("[boot] ✅ Cache ready (in-memory)");
+  // Redis — cache + daily budget counter (docker compose up redis)
+  // Give the lazy connection a moment to establish before logging status
+  await new Promise((r) => setTimeout(r, 1500));
+  const redisOk = await redisHealthCheck();
+  logger.info(redisOk ? "[boot] ✅ Redis connected" : "[boot] ⚠️  Redis unavailable — using in-memory fallback (run: docker compose up -d redis)");
 
   if (!process.env.CRICDATA_API_KEY) {
     logger.warn("[boot] ⚠️  CRICDATA_API_KEY not set — live player data will fail");

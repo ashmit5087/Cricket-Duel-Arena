@@ -280,7 +280,9 @@ Write a punchy, cinematic cricket battle narrative. Reference their actual playi
   );
 
   if (!res.ok) throw new Error(`Gemini API ${res.status}`);
-  const data = await res.json();
+  const data = (await res.json()) as {
+    candidates?: { content?: { parts?: { text?: string }[] } }[];
+  };
   return (
     data.candidates?.[0]?.content?.parts?.[0]?.text ??
     buildStatNarrative(name1, name2, odi1?.avg ?? 0, odi2?.avg ?? 0, mlResult)

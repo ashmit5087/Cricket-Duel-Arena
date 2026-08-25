@@ -13,7 +13,7 @@ import { generateKohliQuiz } from "../lib/quizGenerator";
 import { createQuizToken, verifyQuizToken } from "../lib/quizToken";
 import { logger } from "../utils/logger";
 
-export const quizRouter = Router();
+export const quizRouter: Router = Router();
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

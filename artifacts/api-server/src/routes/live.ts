@@ -4,7 +4,7 @@ import { cacheGet, cacheSet, TTL } from "../db/redis";
 import { query } from "../db/postgres";
 import { logger } from "../utils/logger";
 
-export const liveRouter = Router();
+export const liveRouter: Router = Router();
 
 // GET /api/live/matches — all currently live matches
 liveRouter.get("/matches", async (_req: Request, res: Response) => {
