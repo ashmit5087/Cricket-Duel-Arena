@@ -33,13 +33,24 @@ const permanentMem = new NodeCache({ useClones: false });
 
 let redisAvailable = false;
 
+// REDIS_URL is set by Render's Key Value connectionString (includes auth).
+// Local Docker uses individual REDIS_HOST / REDIS_PORT / REDIS_PASSWORD vars.
+function redisConfig() {
+  if (process.env.REDIS_URL) {
+    return { url: process.env.REDIS_URL };
+  }
+  return {
+    host:     process.env.REDIS_HOST     ?? "localhost",
+    port:     parseInt(process.env.REDIS_PORT ?? "6379"),
+    password: process.env.REDIS_PASSWORD ?? undefined,
+  };
+}
+
 const redisClient = new Redis({
-  host:     process.env.REDIS_HOST     ?? "localhost",
-  port:     parseInt(process.env.REDIS_PORT ?? "6379"),
-  password: process.env.REDIS_PASSWORD ?? undefined,
-  db:       0,
+  ...redisConfig(),
+  db: 0,
   retryStrategy: (times) => {
-    if (times > 5) return null;   // stop retrying after 5 attempts
+    if (times > 5) return null;
     return Math.min(times * 500, 3000);
   },
   maxRetriesPerRequest: 1,
@@ -186,22 +197,18 @@ export const redis = {
 
 // Dedicated subscriber connection (Redis requires separate conn for pub/sub)
 const redisSubClient = new Redis({
-  host:     process.env.REDIS_HOST     ?? "localhost",
-  port:     parseInt(process.env.REDIS_PORT ?? "6379"),
-  password: process.env.REDIS_PASSWORD ?? undefined,
-  db:       0,
+  ...redisConfig(),
+  db: 0,
   lazyConnect: true,
   enableOfflineQueue: false,
-  retryStrategy: () => null,   // don't spam retries for the subscriber
+  retryStrategy: () => null,
 });
 
 redisSubClient.on("error", () => { /* silent */ });
 
 export const redisPub = new Redis({
-  host:     process.env.REDIS_HOST     ?? "localhost",
-  port:     parseInt(process.env.REDIS_PORT ?? "6379"),
-  password: process.env.REDIS_PASSWORD ?? undefined,
-  db:       0,
+  ...redisConfig(),
+  db: 0,
   lazyConnect: true,
   enableOfflineQueue: false,
   retryStrategy: () => null,

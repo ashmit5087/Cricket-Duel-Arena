@@ -49,21 +49,11 @@ services:
       - key: FRONTEND_URL
         sync: false            # paste your Vercel URL after frontend deploys
       # ── Key Value (Redis) wiring ──
-      - key: REDIS_HOST
+      - key: REDIS_URL
         fromService:
           name: cricket-dna-redis
           type: keyvalue
-          property: host
-      - key: REDIS_PORT
-        fromService:
-          name: cricket-dna-redis
-          type: keyvalue
-          property: port
-      - key: REDIS_PASSWORD
-        fromService:
-          name: cricket-dna-redis
-          type: keyvalue
-          property: password
+          property: connectionString
       # ── Postgres wiring ──
       - key: POSTGRES_HOST
         fromDatabase:
