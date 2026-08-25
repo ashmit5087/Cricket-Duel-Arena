@@ -2,17 +2,27 @@ import { useState, useEffect, useRef } from "react";
 import { useLocation, Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { VideoBackground } from "@/components/ui/VideoBackground";
+import { PlayerAvatar } from "@/components/ui/PlayerAvatar";
 import { RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer, Legend } from "recharts";
 import { PLAYERS, BATTLE_RESULTS, ARCHETYPES, RADAR_AXES } from "@/data/mockData";
+import type { Player } from "@/data/mockData";
 import { useBattle, useStatementMoments, usePrefetchPlayer, useAlgorithms } from "@/hooks/usePlayerData";
 
 type BattlePhase = "picker" | "intro" | "fight" | "ko";
 
 function KOAnimation({ winner, loser, onDone }: { winner: string; loser: string; onDone: () => void }) {
+  // Keep the latest callback in a ref: `onDone` is an inline arrow in
+  // BattleView and changes identity on every re-render. Depending on it
+  // would re-arm the auto-continue timer mid-animation.
+  const onDoneRef = useRef(onDone);
   useEffect(() => {
-    const timer = setTimeout(onDone, 5000);
+    onDoneRef.current = onDone;
+  });
+
+  useEffect(() => {
+    const timer = setTimeout(() => onDoneRef.current(), 5000);
     return () => clearTimeout(timer);
-  }, [onDone]);
+  }, []);
 
   return (
     <motion.div
@@ -111,12 +121,24 @@ function FightIntro({
 }) {
   const [phase, setPhase] = useState<"screen" | "vs" | "fight">("screen");
 
+  // Keep the latest callback in a ref: `onDone` is an inline arrow in
+  // BattleView, so its identity changes on every re-render (e.g. when battle
+  // data loads mid-intro). Depending on it used to clear + re-arm these
+  // timers, pushing the VS → FIGHT timeline back unpredictably — which is why
+  // FIGHT! sometimes never fully appeared before the intro dissolved.
+  const onDoneRef = useRef(onDone);
   useEffect(() => {
-    const t1 = setTimeout(() => setPhase("vs"), 1700);
-    const t2 = setTimeout(() => setPhase("fight"), 2600);
-    const t3 = setTimeout(onDone, 3500);
+    onDoneRef.current = onDone;
+  });
+
+  // Run the timeline exactly once on mount.
+  // 0–1500ms split-screen reveal → 1500–2700ms VS → 2700–4400ms FIGHT!
+  useEffect(() => {
+    const t1 = setTimeout(() => setPhase("vs"), 1500);
+    const t2 = setTimeout(() => setPhase("fight"), 2700);
+    const t3 = setTimeout(() => onDoneRef.current(), 4400);
     return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
-  }, [onDone]);
+  }, []);
 
   const p1Col = "#c0392b";
   const p2Col = p2Arch?.color || "#d4a500";
@@ -231,16 +253,16 @@ function FightIntro({
         transition={{ duration: 1.4, delay: 0.05, ease: "easeIn" }}
       />
 
-      {/* VS / FIGHT overlay */}
+      {/* VS / FIGHT overlay — exits use short tweens so the mode="wait"
+          handover is deterministic and never eats into FIGHT!'s screen time */}
       <AnimatePresence mode="wait">
         {phase === "vs" && (
           <motion.div
             key="vs"
             className="absolute inset-0 flex items-center justify-center pointer-events-none z-30"
             initial={{ scale: 0.4, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 1.8, opacity: 0 }}
-            transition={{ type: "spring", stiffness: 260, damping: 14 }}
+            animate={{ scale: 1, opacity: 1, transition: { type: "spring", stiffness: 260, damping: 14 } }}
+            exit={{ scale: 1.8, opacity: 0, transition: { duration: 0.18, ease: "easeIn" } }}
           >
             <motion.div className="absolute inset-0 bg-white" initial={{ opacity: 0.8 }} animate={{ opacity: 0 }} transition={{ duration: 0.12 }} />
             <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "clamp(90px,18vw,200px)", letterSpacing: "0.1em", color: "#c0392b", textShadow: "0 0 60px #c0392b, 0 0 120px #c0392b60", lineHeight: 1 }}>
@@ -253,9 +275,8 @@ function FightIntro({
             key="fight"
             className="absolute inset-0 flex items-center justify-center pointer-events-none z-30"
             initial={{ y: "-25%", opacity: 0, scale: 1.2 }}
-            animate={{ y: 0, opacity: 1, scale: 1 }}
-            exit={{ y: "25%", opacity: 0 }}
-            transition={{ type: "spring", stiffness: 280, damping: 18 }}
+            animate={{ y: 0, opacity: 1, scale: 1, transition: { type: "spring", stiffness: 300, damping: 20 } }}
+            exit={{ opacity: 0, scale: 1.15, transition: { duration: 0.2, ease: "easeIn" } }}
           >
             <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "clamp(70px,14vw,170px)", letterSpacing: "0.06em", color: "#fff", textShadow: "0 0 40px rgba(255,255,255,0.9), 0 0 90px #c0392b", lineHeight: 1 }}>
               FIGHT!
@@ -348,6 +369,13 @@ function StatTable({ p1, p2 }: { p1: typeof PLAYERS[0]; p2: typeof PLAYERS[0] })
 function BattleView({ p1Id, p2Id, algorithms }: { p1Id: string; p2Id: string; algorithms: string[] }) {
   const [phase, setPhase] = useState<BattlePhase>("intro");
   const [showKO, setShowKO] = useState(false);
+
+  // Picker → result happens on the same route, so the global ScrollToTop
+  // (route-based) never fires here. Start the result page at the top instead
+  // of inheriting the scroll offset from the "Run the Duel" button.
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
 
   const p1 = PLAYERS.find((p) => p.id === p1Id) || PLAYERS[0];
   const p2 = PLAYERS.find((p) => p.id === p2Id) || PLAYERS[1];
@@ -601,13 +629,238 @@ function BattleView({ p1Id, p2Id, algorithms }: { p1Id: string; p2Id: string; al
   );
 }
 
+// ─── Player selection: two fighter slots + on-demand roster ─────────────────
+
+type Slot = "p1" | "p2";
+
+const SLOT_COLORS: Record<Slot, string> = { p1: "#c0392b", p2: "#d4a500" };
+const SLOT_LABELS: Record<Slot, string> = { p1: "Player 1", p2: "Player 2" };
+
+/**
+ * One fighter slot. Shows the currently selected player as a rich card, or an
+ * inviting empty state. Clicking opens the shared roster modal.
+ */
+function SlotCard({
+  slot,
+  player,
+  onOpen,
+}: {
+  slot: Slot;
+  player: Player | undefined;
+  onOpen: () => void;
+}) {
+  const color = SLOT_COLORS[slot];
+  const arch = player ? ARCHETYPES.find((a) => a.id === player.archetypeId) : undefined;
+
+  return (
+    <button
+      onClick={onOpen}
+      data-testid={`slot-${slot}`}
+      className="relative overflow-hidden text-left p-6 md:p-7 min-h-60 flex flex-col cursor-pointer group transition-all duration-300 hover:-translate-y-1"
+      style={{
+        border: `1px solid ${player ? `${color}50` : "rgba(255,255,255,0.10)"}`,
+        background: "rgba(8,8,10,0.62)",
+        backdropFilter: "blur(6px)",
+        boxShadow: player ? `0 8px 40px ${color}14` : "none",
+      }}
+    >
+      {/* Accent top line + tint once a player is locked in */}
+      {player && (
+        <>
+          <div className="absolute top-0 left-0 right-0 h-px" style={{ background: `linear-gradient(90deg, transparent, ${color}, transparent)` }} />
+          <div className="absolute inset-0 pointer-events-none" style={{ background: `radial-gradient(ellipse 130% 90% at 50% 0%, ${color}1c 0%, transparent 62%)` }} />
+        </>
+      )}
+
+      {/* Header row */}
+      <div className="relative flex items-center justify-between mb-6">
+        <span className="text-[10px] tracking-[0.3em] uppercase font-bold" style={{ color, textShadow: `0 0 12px ${color}50` }}>
+          {SLOT_LABELS[slot]}
+        </span>
+        <span className="text-[9px] tracking-[0.2em] uppercase text-white/30 group-hover:text-white/70 transition-colors">
+          {player ? "Change ↺" : "Select +"}
+        </span>
+      </div>
+
+      {player ? (
+        <div className="relative mt-auto flex items-center gap-5">
+          <PlayerAvatar player={player} size={88} imageSize="200" showFlag showRing animate={false} />
+          <div className="min-w-0">
+            <div
+              className="text-white leading-[1.05] truncate"
+              style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "clamp(28px, 3.2vw, 40px)", letterSpacing: "0.03em", textShadow: "0 2px 14px rgba(0,0,0,0.8)" }}
+            >
+              {player.name}
+            </div>
+            <div className="flex items-center gap-2 mt-1.5 text-[10px] uppercase tracking-wider text-white/40">
+              <span>{player.flag}</span>
+              <span>{player.country}</span>
+              <span className="text-white/20">·</span>
+              <span>{player.role}</span>
+            </div>
+            {arch && (
+              <div
+                className="mt-2.5 inline-flex items-center gap-1.5 text-[8px] uppercase tracking-[0.18em] px-2 py-1"
+                style={{ color: arch.color, background: `${arch.color}14`, border: `1px solid ${arch.color}30` }}
+              >
+                <span className="w-1 h-1 rounded-full" style={{ background: arch.color }} />
+                {arch.name}
+              </div>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="relative mt-auto">
+          <div className="font-serif italic text-xl md:text-2xl text-white/35 group-hover:text-white/55 transition-colors">
+            Choose your challenger
+          </div>
+          <div className="text-[10px] text-white/25 mt-2 tracking-[0.2em] uppercase">Tap to open the roster</div>
+        </div>
+      )}
+    </button>
+  );
+}
+
+/**
+ * Searchable roster modal. Only one is open at a time — the player already
+ * locked in for the opposite slot is excluded to prevent a mirror match.
+ */
+function RosterModal({
+  slot,
+  excludedId,
+  onPick,
+  onClose,
+  prefetch,
+}: {
+  slot: Slot;
+  excludedId: string | null;
+  onPick: (playerId: string) => void;
+  onClose: () => void;
+  prefetch: (cricInfoId: string) => void;
+}) {
+  const [search, setSearch] = useState("");
+  const color = SLOT_COLORS[slot];
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  const q = search.trim().toLowerCase();
+  const roster = PLAYERS.filter(
+    (p) =>
+      p.id !== excludedId &&
+      (!q ||
+        p.name.toLowerCase().includes(q) ||
+        p.country.toLowerCase().includes(q) ||
+        p.role.toLowerCase().includes(q))
+  );
+
+  return (
+    <motion.div
+      className="fixed inset-0 z-60 flex items-center justify-center p-4 md:p-8"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      data-testid="roster-modal"
+    >
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
+
+      <motion.div
+        className="relative w-full max-w-3xl flex flex-col max-h-[82vh]"
+        style={{ border: "1px solid rgba(255,255,255,0.10)", background: "rgba(10,10,12,0.96)", boxShadow: "0 24px 80px rgba(0,0,0,0.6)" }}
+        initial={{ y: 24, opacity: 0, scale: 0.98 }}
+        animate={{ y: 0, opacity: 1, scale: 1 }}
+        exit={{ y: 16, opacity: 0, scale: 0.98 }}
+        transition={{ type: "spring", stiffness: 300, damping: 28 }}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-white/10 shrink-0">
+          <div>
+            <div className="text-[9px] uppercase tracking-[0.3em] mb-0.5" style={{ color }}>
+              Select {SLOT_LABELS[slot]} · {roster.length} available
+            </div>
+            <div className="font-serif text-lg text-white">Choose a challenger</div>
+          </div>
+          <button
+            onClick={onClose}
+            aria-label="Close roster"
+            className="text-white/40 hover:text-white text-lg leading-none px-2 py-1 cursor-pointer transition-colors"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Search */}
+        <div className="px-5 pt-4 pb-1 shrink-0">
+          <input
+            autoFocus
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by name, country or role…"
+            data-testid="roster-search"
+            className="w-full bg-white/4 border border-white/10 focus:border-white/25 outline-none px-4 py-2.5 text-sm text-white placeholder:text-white/25 transition-colors"
+          />
+        </div>
+
+        {/* Roster grid */}
+        <div className="flex-1 min-h-0 overflow-y-auto px-5 py-4">
+          {roster.length === 0 ? (
+            <div className="text-center text-white/30 text-sm py-10">No players match “{search}”</div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+              {roster.map((p) => {
+                const arch = ARCHETYPES.find((a) => a.id === p.archetypeId);
+                const col = arch?.color || "#888";
+                return (
+                  <button
+                    key={p.id}
+                    onClick={() => onPick(p.id)}
+                    onMouseEnter={() => prefetch(p.cricInfoId)}
+                    className="flex items-center gap-3 p-2.5 text-left border border-white/5 hover:border-white/20 bg-white/2 hover:bg-white/6 transition-colors cursor-pointer"
+                  >
+                    <PlayerAvatar player={p} size={44} imageSize="100" showFlag={false} showRing={false} animate={false} />
+                    <div className="min-w-0 flex-1">
+                      <div className="text-xs text-white/90 font-medium truncate">
+                        {p.name} <span className="ml-0.5">{p.flag}</span>
+                      </div>
+                      <div className="text-[9px] uppercase tracking-wider truncate mt-0.5" style={{ color: `${col}cc` }}>
+                        {p.role} · {arch?.name}
+                      </div>
+                    </div>
+                    <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: col, boxShadow: `0 0 6px ${col}` }} />
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 function PlayerPicker({ onSelect }: { onSelect: (p1Id: string, p2Id: string, algos: string[]) => void }) {
   const [p1Id, setP1Id] = useState<string>("virat-kohli");
   const [p2Id, setP2Id] = useState<string | null>(null);
   const [selectedAlgos, setSelectedAlgos] = useState<Set<string>>(new Set(["xgboost", "random_forest"]));
-  
+  const [openSlot, setOpenSlot] = useState<Slot | null>(null);
+
   const { data: algorithms = [] } = useAlgorithms();
   const prefetch = usePrefetchPlayer();
+
+  // Lock body scroll while the roster modal is open
+  useEffect(() => {
+    if (!openSlot) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [openSlot]);
 
   const handleAlgoToggle = (id: string) => {
     const next = new Set(selectedAlgos);
@@ -625,71 +878,37 @@ function PlayerPicker({ onSelect }: { onSelect: (p1Id: string, p2Id: string, alg
     }
   };
 
+  const handlePick = (playerId: string) => {
+    if (openSlot === "p1") setP1Id(playerId);
+    else if (openSlot === "p2") setP2Id(playerId);
+    setOpenSlot(null);
+  };
+
+  const p1 = PLAYERS.find((p) => p.id === p1Id);
+  const p2 = p2Id ? PLAYERS.find((p) => p.id === p2Id) : undefined;
+
   return (
     <div className="relative min-h-screen py-16 px-4 md:px-8" data-testid="player-picker">
       <VideoBackground src="/stadium-floodlight.mp4" opacity={0.72} overlayOpacity={0.28} />
       <div className="absolute inset-0 z-0 pointer-events-none" style={{ background: "linear-gradient(to bottom, rgba(4,4,8,0.82) 0%, rgba(4,4,8,0.18) 35%, rgba(4,4,8,0.55) 75%, rgba(4,4,8,0.92) 100%)" }} />
-      
-      <div className="relative z-10 max-w-6xl mx-auto pb-20">
+
+      <div className="relative z-10 max-w-5xl mx-auto pb-20">
         <h1 className="font-serif text-3xl md:text-5xl text-[#f5f5f5] mb-1" style={{ textShadow: "0 2px 20px rgba(0,0,0,0.9)" }}>Battle Arena</h1>
         <p className="text-sm mb-10" style={{ color: "rgba(180,165,155,0.65)", textShadow: "0 1px 6px rgba(0,0,0,0.9)" }}>Select challengers and configure the simulation.</p>
 
-        <div className="grid md:grid-cols-2 gap-6 mb-12">
-          {/* PLAYER 1 */}
-          <div>
-            <div className="text-[10px] text-[#c0392b] tracking-widest uppercase mb-3" style={{ textShadow: "0 0 10px rgba(192,57,43,0.4)" }}>Player 1</div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {PLAYERS.map((p) => {
-                const arch = ARCHETYPES.find((a) => a.id === p.archetypeId);
-                const col = arch?.color || "#c0392b";
-                const isSelected = p1Id === p.id;
-                if (p.id === p2Id) return null; // Can't select same player twice
-                
-                return (
-                  <button
-                    key={`p1-${p.id}`}
-                    onClick={() => setP1Id(p.id)}
-                    className="relative p-2.5 text-left transition-all duration-200 overflow-hidden group"
-                    style={{ border: `1px solid ${isSelected ? col : "rgba(255,255,255,0.07)"}`, background: isSelected ? `${col}18` : "rgba(8,8,10,0.6)", backdropFilter: "blur(4px)" }}
-                  >
-                    {isSelected && <div className="absolute top-0 left-0 right-0 h-px" style={{ background: `linear-gradient(90deg,transparent,${col},transparent)` }} />}
-                    <div className="flex justify-between items-start mb-1">
-                      <div className="text-xs text-[#ebebeb] font-medium leading-tight pr-1">{p.name}</div>
-                    </div>
-                    {isSelected && <div className="mt-1.5 text-[8px] uppercase tracking-[0.2em]" style={{ color: col }}>◆ P1</div>}
-                  </button>
-                );
-              })}
+        {/* MATCHUP — two slot cards around a VS emblem */}
+        <div className="grid md:grid-cols-[1fr_auto_1fr] gap-3 md:gap-6 items-stretch mb-14">
+          <SlotCard slot="p1" player={p1} onOpen={() => setOpenSlot("p1")} />
+
+          <div className="flex items-center justify-center md:px-1">
+            <div
+              style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "clamp(30px, 4vw, 46px)", letterSpacing: "0.1em", color: "#c0392b", textShadow: "0 0 28px rgba(192,57,43,0.5)", lineHeight: 1 }}
+            >
+              VS
             </div>
           </div>
 
-          {/* PLAYER 2 */}
-          <div>
-            <div className="text-[10px] text-[#d4a500] tracking-widest uppercase mb-3" style={{ textShadow: "0 0 10px rgba(212,165,0,0.4)" }}>Player 2</div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {PLAYERS.map((p) => {
-                const arch = ARCHETYPES.find((a) => a.id === p.archetypeId);
-                const col = arch?.color || "#d4a500";
-                const isSelected = p2Id === p.id;
-                if (p.id === p1Id) return null;
-                
-                return (
-                  <button
-                    key={`p2-${p.id}`}
-                    onClick={() => setP2Id(p.id)}
-                    className="relative p-2.5 text-left transition-all duration-200 overflow-hidden group"
-                    style={{ border: `1px solid ${isSelected ? col : "rgba(255,255,255,0.07)"}`, background: isSelected ? `${col}18` : "rgba(8,8,10,0.6)", backdropFilter: "blur(4px)" }}
-                  >
-                    {isSelected && <div className="absolute top-0 left-0 right-0 h-px" style={{ background: `linear-gradient(90deg,transparent,${col},transparent)` }} />}
-                    <div className="flex justify-between items-start mb-1">
-                      <div className="text-xs text-[#ebebeb] font-medium leading-tight pr-1">{p.name}</div>
-                    </div>
-                    {isSelected && <div className="mt-1.5 text-[8px] uppercase tracking-[0.2em]" style={{ color: col }}>◆ P2</div>}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          <SlotCard slot="p2" player={p2} onOpen={() => setOpenSlot("p2")} />
         </div>
 
         {/* ALGORITHMS */}
@@ -741,6 +960,20 @@ function PlayerPicker({ onSelect }: { onSelect: (p1Id: string, p2Id: string, alg
           </motion.div>
         )}
       </div>
+
+      {/* ROSTER MODAL */}
+      <AnimatePresence>
+        {openSlot && (
+          <RosterModal
+            key={openSlot}
+            slot={openSlot}
+            excludedId={openSlot === "p1" ? p2Id : p1Id}
+            onPick={handlePick}
+            onClose={() => setOpenSlot(null)}
+            prefetch={prefetch}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
