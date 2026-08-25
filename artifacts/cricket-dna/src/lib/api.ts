@@ -295,6 +295,7 @@ export interface QuizResult {
 export interface QuizLeaderboardEntry {
   user_id: string | null;
   score: number;
+  max_score: number;
   percentage: number;
   tier: string;
   created_at: string;

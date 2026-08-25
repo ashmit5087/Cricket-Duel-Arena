@@ -164,13 +164,19 @@ export function usePlayerSearch(query: string) {
 
 // ─── Quiz & Algorithms ────────────────────────────────────────────────────────
 
-export function useQuiz() {
+/**
+ * Lazy quiz hook. Pass `enabled: true` only after the user explicitly starts a session.
+ * This avoids burning Gemini API calls just from visiting the page.
+ */
+export function useQuiz(opts?: { enabled?: boolean }) {
   return useQuery({
     queryKey: ["quiz", "kohli-fanboy"],
     queryFn: fetchQuiz,
+    enabled: opts?.enabled ?? false,
     staleTime: 0, // Always fetch fresh LLM quiz
-    gcTime: 0,
+    gcTime: 1000 * 60 * 5, // Keep last result for 5 min for the result-screen recap
     refetchOnWindowFocus: false,
+    retry: 1, // One retry for transient Gemini errors
   });
 }
 

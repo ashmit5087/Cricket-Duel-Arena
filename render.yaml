@@ -46,6 +46,8 @@ services:
         sync: false
       - key: GEMINI_API_KEY
         sync: false
+      - key: QUIZ_SIGNING_SECRET
+        sync: false            # any long random string — keeps quiz tokens valid across deploys
       - key: FRONTEND_URL
         sync: false            # paste your Vercel URL after frontend deploys
       # ── Key Value (Redis) wiring ──

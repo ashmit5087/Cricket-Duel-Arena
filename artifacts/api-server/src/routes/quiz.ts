@@ -165,7 +165,7 @@ quizRouter.post("/kohli-fanboy/submit", async (req: Request, res: Response) => {
 quizRouter.get("/kohli-fanboy/leaderboard", async (_req: Request, res: Response) => {
   try {
     const rows = await query(
-      `SELECT user_id, score, percentage, tier, created_at
+      `SELECT user_id, score, max_score, percentage, tier, created_at
        FROM quiz_attempts
        WHERE quiz_id = $1
        ORDER BY score DESC, created_at ASC
