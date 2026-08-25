@@ -1,6 +1,6 @@
 {
   "installCommand": "pnpm install",
-  "buildCommand": "cd artifacts/cricket-dna && pnpm build",
-  "outputDirectory": "artifacts/cricket-dna/dist",
+  "buildCommand": "pnpm build",
+  "outputDirectory": "dist",
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
 }
