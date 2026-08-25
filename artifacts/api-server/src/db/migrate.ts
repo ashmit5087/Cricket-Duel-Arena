@@ -1,17 +1,53 @@
 // src/db/migrate.ts
 // Run with: pnpm db:migrate
-// Seeds the players table from PLAYER_ROSTER and initialises Elo ratings
+// 1. Applies schema.sql (CREATE TABLE IF NOT EXISTS — safe to re-run)
+// 2. Seeds the players table from PLAYER_ROSTER
+// 3. Initialises Elo ratings and streaks
 
+import * as fs from "fs";
+import * as path from "path";
 import { pool, query, transaction } from "./postgres";
 import { PLAYER_ROSTER, getCricbuzzImageUrl } from "../models/player";
 import { logger } from "../utils/logger";
 
-async function migrate() {
-  logger.info("[migrate] Starting database seed...");
+async function applySchema(): Promise<void> {
+  // schema.sql lives next to this file at src/db/schema.sql
+  // After tsc it compiles to dist/db/ so __dirname points there;
+  // walk up to find schema.sql in both src and dist layouts.
+  const candidates = [
+    path.join(__dirname, "schema.sql"),                          // dist/db/schema.sql
+    path.join(__dirname, "..", "..", "src", "db", "schema.sql"), // from dist/ back to src/
+  ];
 
+  let schemaPath: string | null = null;
+  for (const c of candidates) {
+    if (fs.existsSync(c)) { schemaPath = c; break; }
+  }
+
+  if (!schemaPath) {
+    throw new Error("schema.sql not found — cannot apply database schema");
+  }
+
+  const sql = fs.readFileSync(schemaPath, "utf8");
+  const client = await pool.connect();
+  try {
+    await client.query(sql);
+    logger.info("[migrate] ✅ Schema applied from " + schemaPath);
+  } finally {
+    client.release();
+  }
+}
+
+async function migrate() {
+  logger.info("[migrate] Starting migration...");
+
+  // ── Step 1: Apply schema (idempotent — uses IF NOT EXISTS) ─────────────────
+  await applySchema();
+
+  // ── Step 2: Seed players + Elo ratings + streaks ─────────────────────
   await transaction(async (client) => {
 
-    // ── Upsert every player in the roster ──────────────────────────────────
+    // ── Upsert every player in the roster ──────────────────────────────────────
 
     for (const p of PLAYER_ROSTER) {
       await client.query(
