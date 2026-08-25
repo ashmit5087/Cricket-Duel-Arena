@@ -10,6 +10,7 @@ import { healthCheck as pgHealth } from "./db/postgres";
 import { redisHealthCheck } from "./db/redis";
 import { initSocketServer } from "./services/socket";
 import { startPoller, getPollerStatus } from "./workers/poller";
+import { startKeepAlive } from "./workers/keepAlive";
 import { liveRouter } from "./routes/live";
 import { playersRouter } from "./routes/players";
 import { battleRouter } from "./routes/battle";
@@ -177,6 +178,9 @@ async function boot() {
   // 3. Start Cricbuzz live match poller
   startPoller();
   logger.info("[boot] ✅ Live match poller started");
+
+  // 4. Keep-alive self-ping (Render free tier anti-sleep)
+  startKeepAlive();
 
   // 4. Start listening
   httpServer.listen(PORT, () => {

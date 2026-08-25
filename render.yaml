@@ -17,9 +17,9 @@ databases:
     # Schema is applied via the API server's preDeployJob below
 
   - name: cricket-dna-redis
-    type: redis
+    type: keyvalue
     plan: free
-    ipAllowList: []   # only allow internal connections
+    ipAllowList: []   # only allow internal connections (Render Key Value store)
 
 services:
   # ── ML service (FastAPI, Docker) ────────────────────────────────────────────
@@ -50,17 +50,17 @@ services:
       - key: REDIS_HOST
         fromService:
           name: cricket-dna-redis
-          type: redis
+          type: keyvalue
           property: host
       - key: REDIS_PORT
         fromService:
           name: cricket-dna-redis
-          type: redis
+          type: keyvalue
           property: port
       - key: REDIS_PASSWORD
         fromService:
           name: cricket-dna-redis
-          type: redis
+          type: keyvalue
           property: password
       - key: POSTGRES_HOST
         fromDatabase:
@@ -92,6 +92,8 @@ services:
         value: "100"
       - key: NODE_ENV
         value: production
+      - key: KEEP_ALIVE_ENABLED
+        value: "true"          # self-ping every 10 min — prevents Render free-tier sleep
       - key: FRONTEND_URL
         sync: false          # paste your Vercel URL, e.g. https://cricket-dna.vercel.app
 
