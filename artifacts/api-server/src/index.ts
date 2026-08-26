@@ -70,6 +70,31 @@ app.use("/api/engagement", engagementRouter);
 app.use("/api/kohli",      kohliRouter);
 app.use("/api/quiz",       quizRouter);
 
+// ── Debug: dump raw Cricbuzz response for one player. Used to design the
+//    career-stats parser. Costs 3 credits per call. REMOVE after fix lands.
+app.get("/api/debug/raw-stats", async (req, res) => {
+  const cbId = String(req.query.cbId ?? "253802");
+  try {
+    const headers = {
+      "x-rapidapi-key":  process.env.RAPIDAPI_KEY ?? "",
+      "x-rapidapi-host": "cricbuzz-cricket.p.rapidapi.com",
+      "Accept":          "application/json",
+    };
+    const fetchOne = async (path: string) => {
+      const r = await fetch(`https://cricbuzz-cricket.p.rapidapi.com${path}`, { headers });
+      return { path, status: r.status, body: await r.text() };
+    };
+    const [info, batting, bowling] = await Promise.all([
+      fetchOne(`/stats/v1/player/${cbId}`),
+      fetchOne(`/stats/v1/player/${cbId}/batting`),
+      fetchOne(`/stats/v1/player/${cbId}/bowling`),
+    ]);
+    res.json({ cbId, info, batting, bowling });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // Budget status — never costs a CricData request
 app.get("/api/budget", async (_req, res) => {
   try { res.json(await getBudgetStatus()); }
@@ -149,6 +174,7 @@ app.use((req, res) => {
       "GET  /api/engagement/rankings?format=overall",
       "GET  /api/engagement/streaks/:internalId",
       "GET  /api/engagement/streaks/active",
+      "GET  /api/debug/raw-stats?cbId=253802",
     ],
   });
 });
