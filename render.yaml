@@ -37,7 +37,9 @@ services:
     runtime: node
     rootDir: artifacts/api-server
     buildCommand: pnpm install && pnpm build
-    startCommand: node dist/db/migrate.js && node dist/index.js
+    # bootstrapStats.js is idempotent: it spends 0 credits once every player
+    # has career stats, so it's safe to run on every deploy.
+    startCommand: node dist/db/migrate.js && node dist/db/bootstrapStats.js && node dist/index.js
     plan: free
     healthCheckPath: /health
     envVars:

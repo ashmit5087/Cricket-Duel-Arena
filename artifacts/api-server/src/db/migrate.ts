@@ -135,6 +135,33 @@ async function migrate() {
     });
 
     logger.info("[migrate] ml_verdicts column ensured");
+
+    // ── Snapshot-first architecture columns ────────────────────────────────
+    // recent_form / radar_axes live on players; elo stays in elo_ratings.
+
+    await client.query(`
+      ALTER TABLE players
+        ADD COLUMN IF NOT EXISTS recent_form JSONB,
+        ADD COLUMN IF NOT EXISTS radar_axes JSONB,
+        ADD COLUMN IF NOT EXISTS pending_refresh BOOLEAN NOT NULL DEFAULT FALSE
+    `);
+
+    logger.info("[migrate] players snapshot columns ensured");
+
+    // Queue of roster-miss players awaiting their first stats refresh.
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS refresh_queue (
+        id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        internal_id TEXT UNIQUE NOT NULL,
+        cricbuzz_player_id TEXT,
+        name        TEXT NOT NULL,
+        country     TEXT,
+        queued_at   TIMESTAMPTZ DEFAULT NOW()
+      )
+    `);
+
+    logger.info("[migrate] refresh_queue table ensured");
   });
 
   logger.info("[migrate] ✅ Migration complete");

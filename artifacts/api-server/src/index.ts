@@ -10,7 +10,8 @@ import { healthCheck as pgHealth } from "./db/postgres";
 import { migrate } from "./db/migrate";
 import { redisHealthCheck } from "./db/redis";
 import { initSocketServer } from "./services/socket";
-import { startPoller, getPollerStatus } from "./workers/poller";
+import { getPollerStatus } from "./workers/poller";
+import { startRefresher, runRefreshCycle } from "./workers/refresher";
 import { startKeepAlive } from "./workers/keepAlive";
 import { liveRouter } from "./routes/live";
 import { playersRouter } from "./routes/players";
@@ -116,6 +117,7 @@ app.get("/health", async (_req, res) => {
       activeMatches: poller.activeMatches,
       matchIds:      poller.matchIds,
     },
+    refresher: process.env.RAPIDAPI_KEY ? "✅ enabled (8h snapshot refresh)" : "❌ RAPIDAPI_KEY missing",
     version: "2.0.0",
   });
 });
@@ -193,9 +195,20 @@ async function boot() {
   initSocketServer(httpServer);
   logger.info("[boot] ✅ Socket.io initialised");
 
-  // 3. Start Cricbuzz live match poller
-  startPoller();
-  logger.info("[boot] ✅ Live match poller started");
+  // 3. Snapshot refresher — replaces the 10s live poller.
+  // External Cricbuzz calls now happen ONLY here (8h cadence + boot-if-stale).
+  if (!process.env.RAPIDAPI_KEY) {
+    logger.warn("[boot] ⚠️  RAPIDAPI_KEY not set — snapshot refresher disabled; serving seeded stats only");
+  } else {
+    await startRefresher();
+    logger.info("[boot] ✅ Snapshot refresher started");
+  }
+
+  // Manual trigger endpoint support (admin/debug): POST /api/refresh
+  app.post("/api/refresh", async (_req, res) => {
+    try { await runRefreshCycle(); res.json({ ok: true }); }
+    catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
 
   // 4. Keep-alive self-ping (Render free tier anti-sleep)
   startKeepAlive();

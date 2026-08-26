@@ -176,6 +176,20 @@ export const redis = {
     else permanentMem.set(key, value);
     return "OK";
   },
+  /** SET key value EX ttl NX — returns true only if the lock was acquired. */
+  setnx: async (key: string, value: string, ttlSeconds: number): Promise<boolean> => {
+    if (redisAvailable) {
+      const res = await redisClient.set(key, value, "EX", ttlSeconds, "NX");
+      return res === "OK";
+    }
+    if (permanentMem.get(key)) return false;
+    permanentMem.set(key, value, ttlSeconds);
+    return true;
+  },
+  del: async (key: string): Promise<void> => {
+    if (redisAvailable) await redisClient.del(key);
+    permanentMem.del(key);
+  },
   get: async (key: string): Promise<string | null> => {
     if (redisAvailable) return redisClient.get(key);
     return permanentMem.get<string>(key) ?? null;

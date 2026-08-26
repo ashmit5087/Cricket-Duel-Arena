@@ -1,4 +1,5 @@
 import { logger } from "../utils/logger";
+import { redis } from "../db/redis";
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
@@ -9,6 +10,37 @@ const MIN_REQUEST_GAP_MS = parseInt(process.env.CRICBUZZ_MIN_REQUEST_GAP_MS ?? "
 const MAX_RETRIES = parseInt(process.env.CRICBUZZ_MAX_RETRIES ?? "1", 10);
 const DEFAULT_BACKOFF_MS = parseInt(process.env.CRICBUZZ_BACKOFF_MS ?? "5000", 10);
 const QUOTA_BLOCK_MS = parseInt(process.env.CRICBUZZ_QUOTA_BLOCK_MS ?? String(60 * 60 * 1000), 10);
+
+// Monthly RapidAPI free-tier budget — self-block before the provider does.
+const MONTHLY_QUOTA_LIMIT = parseInt(process.env.CRICBUZZ_MONTHLY_QUOTA ?? "190", 10);
+const MONTHLY_KEY_PREFIX = "cricbuzz:quota:";   // cricbuzz:quota:2026-08
+
+export class QuotaExhaustedError extends Error {
+  constructor() { super("Cricbuzz monthly quota exhausted locally"); }
+}
+
+/**
+ * Atomically spend one credit. Returns false if the monthly budget is gone.
+ * Key rolls over by calendar month; in-memory fallback resets on restart.
+ */
+async function spendCredit(): Promise<boolean> {
+  const monthKey = `${MONTHLY_KEY_PREFIX}${new Date().toISOString().slice(0, 7)}`;
+  try {
+    const count = await redis.incr(monthKey, MONTHLY_QUOTA_LIMIT);
+    // Roll over at month boundary: first incr of a new month key starts fresh
+    if (count === 1) await redis.expire(monthKey, 40 * 86400);
+    return count <= MONTHLY_QUOTA_LIMIT;
+  } catch {
+    return true; // never hard-block battles because Redis hiccupped
+  }
+}
+
+/** How many credits remain this month (for /api/budget + escape-hatch gating). */
+export async function getQuotaRemaining(): Promise<number> {
+  const monthKey = `${MONTHLY_KEY_PREFIX}${new Date().toISOString().slice(0, 7)}`;
+  const used = parseInt((await redis.get(monthKey)) ?? "0", 10);
+  return Math.max(0, MONTHLY_QUOTA_LIMIT - used);
+}
 
 const HEADERS = {
   "x-rapidapi-key":  RAPIDAPI_KEY,
@@ -67,6 +99,10 @@ async function throttleRequest(): Promise<void> {
 async function rateLimitedFetch(url: string, attempt = 0): Promise<any> {
   if (!RAPIDAPI_KEY) {
     throw new Error("RAPIDAPI_KEY not set in environment");
+  }
+
+  if (!(await spendCredit())) {
+    throw new QuotaExhaustedError();
   }
 
   if (Date.now() < quotaBlockedUntil) {

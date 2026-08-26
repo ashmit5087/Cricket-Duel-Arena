@@ -1,58 +1,54 @@
 import { Router, Request, Response } from "express";
-import { getLiveMatches, getMatchScorecard, getLiveCommentary } from "../services/cricbuzz";
-import { cacheGet, cacheSet, TTL } from "../db/redis";
+import { cacheGet } from "../db/redis";
 import { query } from "../db/postgres";
-import { logger } from "../utils/logger";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Live routes — DB/cache ONLY. The refresher worker (8h cadence) is the sole
+// writer of match data; these endpoints never trigger external API calls.
+// "Live" therefore means "as of the last snapshot refresh".
+// ─────────────────────────────────────────────────────────────────────────────
 
 export const liveRouter: Router = Router();
 
-// GET /api/live/matches — all currently live matches
+// GET /api/live/matches — matches known at the last refresh
 liveRouter.get("/matches", async (_req: Request, res: Response) => {
-  const cacheKey = "live:all_matches";
-  const cached = await cacheGet(cacheKey);
-  if (cached) return res.json(cached);
-
   try {
-    const matches = await getLiveMatches();
-    await cacheSet(cacheKey, matches, TTL.LIVE_MATCH);
+    const cached = await cacheGet("live:all_matches");
+    if (cached) return res.json(cached);
+
+    const matches = await query(
+      `SELECT cricbuzz_match_id AS "matchId", series_name AS "seriesName",
+              match_type AS "matchType", status, team_a, team_b, venue,
+              start_time AS "startTime"
+         FROM matches
+        WHERE status IN ('live', 'upcoming')
+        ORDER BY start_time DESC NULLS LAST`
+    );
     res.json(matches);
   } catch (e: any) {
-    logger.error("[live] Failed to fetch live matches", { error: e.message });
-    res.status(502).json({ error: "Failed to fetch live matches", detail: e.message });
+    res.status(500).json({ error: "Failed to load matches", detail: e.message });
   }
 });
 
-// GET /api/live/match/:matchId — full scorecard
+// GET /api/live/match/:matchId — scorecard snapshot from DB innings
 liveRouter.get("/match/:matchId", async (req: Request, res: Response) => {
   const { matchId } = req.params;
-  const cacheKey = `live:match:${matchId}`;
-  const cached = await cacheGet(cacheKey);
-  if (cached) return res.json(cached);
-
   try {
-    const scorecard = await getMatchScorecard(matchId);
-    await cacheSet(cacheKey, scorecard, TTL.LIVE_MATCH);
-    res.json(scorecard);
-  } catch (e: any) {
-    logger.error("[live] Scorecard fetch failed", { matchId, error: e.message });
-    res.status(502).json({ error: "Scorecard fetch failed", detail: e.message });
-  }
-});
+    const cached = await cacheGet(`live:match:${matchId}`);
+    if (cached) return res.json(cached);
 
-// GET /api/live/match/:matchId/commentary — latest commentary
-liveRouter.get("/match/:matchId/commentary", async (req: Request, res: Response) => {
-  const { matchId } = req.params;
-  const cacheKey = `live:commentary:${matchId}`;
-  const cached = await cacheGet(cacheKey);
-  if (cached) return res.json(cached);
+    const match = await query(`SELECT id FROM matches WHERE cricbuzz_match_id = $1`, [matchId]);
+    if (!match[0]) return res.status(404).json({ error: "Match not in snapshot" });
 
-  try {
-    const commentary = await getLiveCommentary(matchId);
-    await cacheSet(cacheKey, commentary, TTL.LIVE_MATCH);
-    res.json(commentary);
+    const innings = await query(
+      `SELECT innings_number AS "inningsId", batting_team AS "battingTeam",
+              bowling_team AS "bowlingTeam", runs, wickets, overs
+         FROM innings WHERE match_id = $1 ORDER BY innings_number`,
+      [match[0].id]
+    );
+    res.json({ matchId, innings });
   } catch (e: any) {
-    logger.error("[live] Commentary fetch failed", { matchId, error: e.message });
-    res.status(502).json({ error: "Commentary fetch failed", detail: e.message });
+    res.status(500).json({ error: "Failed to load scorecard", detail: e.message });
   }
 });
 

@@ -1,9 +1,9 @@
 import { Router, Request, Response, type IRouter } from "express";
-import { getPlayerStats, searchPlayer } from "../services/cricbuzz";
-import { searchCricDataPlayer, getCricDataPlayer, CricDataBudgetExceededError } from "../services/cricdata";
+import { searchPlayer } from "../services/cricbuzz";
 import { cacheGet, cacheSet, TTL, redis } from "../db/redis";
 import { query } from "../db/postgres";
 import { logger } from "../utils/logger";
+import { loadPlayerSnapshot, type SnapshotCareerRow } from "../lib/snapshot";
 import {
   PLAYER_ROSTER,
   emptyCareerStats,
@@ -20,7 +20,7 @@ export const playersRouter: IRouter = Router();
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function toFrontendStats(career: import("../services/cricdata").CricDataCareerRow[], format: string) {
+function toFrontendStats(career: SnapshotCareerRow[], format: string) {
   const row = career.find((c) => c.format === format);
   return {
     matches:  row?.matches  ?? 0,
@@ -45,17 +45,14 @@ async function buildNormalisedPlayer(
   const cached = await cacheGet<NormalisedPlayer>(cacheKey);
   if (cached) return cached;
 
-  // Fetch live career stats from Cricbuzz
-  let liveStats = null;
-  try {
-    liveStats = await getPlayerStats(roster.cricbuzzPlayerId);
-  } catch (e: any) {
-    logger.warn("[players] Cricbuzz stats unavailable", { internalId, error: e.message });
-  }
+  // Career stats from Postgres snapshot (refresher keeps them fresh —
+  // no external calls on user requests)
+  const snapshot = await loadPlayerSnapshot(internalId);
+  const careerRows = snapshot?.career ?? [];
 
   // Parse career stats
   const getFormat = (fmt: string) =>
-    liveStats?.career?.find((c) => c.format === fmt);
+    careerRows.find((c) => c.format === fmt);
 
   const toStats = (raw: ReturnType<typeof getFormat>) => ({
     matches:  raw?.matches  ?? 0,
@@ -120,12 +117,12 @@ async function buildNormalisedPlayer(
   const normalised: NormalisedPlayer = {
     internalId,
     cricbuzzPlayerId: roster.cricbuzzPlayerId,
-    name:             liveStats?.playerName ?? roster.name,
-    country:          liveStats?.country    ?? roster.country,
+    name:             snapshot?.name    ?? roster.name,
+    country:          snapshot?.country ?? roster.country,
     flag:             roster.flag,
-    role:             liveStats?.role       ?? roster.role,
-    battingStyle:     liveStats?.battingStyle,
-    bowlingStyle:     liveStats?.bowlingStyle,
+    role:             snapshot?.role    ?? roster.role,
+    battingStyle:     undefined,
+    bowlingStyle:     undefined,
     archetypeId:      roster.archetypeId,
     archetypeName:    roster.archetypeName,
     testStats:        toStats(getFormat("TEST")),
@@ -250,65 +247,27 @@ playersRouter.get("/:internalId", async (req: Request, res: Response) => {
 });
 
 // GET /api/players/:internalId/stats — career stats only (lighter endpoint)
+// DB-only: served from the Postgres snapshot, refreshed by the refresher worker.
 playersRouter.get("/:internalId/stats", async (req: Request, res: Response) => {
   const { internalId } = req.params;
 
-  // Accept both internalId ("virat-kohli") and cricbuzzPlayerId ("253802")
-  const roster = PLAYER_ROSTER.find(
-    (p) => p.internalId === internalId || p.cricbuzzPlayerId === internalId
-  );
-  if (!roster) return res.status(404).json({ error: "Player not found" });
+  const snapshot = await loadPlayerSnapshot(internalId);
+  if (!snapshot) return res.status(404).json({ error: "Player not found" });
 
-  const cacheKey = `player:stats:${roster.internalId}`;
-  const cached = await cacheGet(cacheKey);
-  if (cached) return res.json(cached);
-
-  // Look up or discover CricData UUID for this player
-  let cricdataId: string | null = await cacheGet<string>(`cricdata:id:${roster.internalId}`);
-  if (!cricdataId) {
-    try {
-      const results = await searchCricDataPlayer(roster.name);
-      const match = results[0];
-      if (match) {
-        cricdataId = match.id;
-        // Cache the ID permanently
-        await redis.set(`cricdata:id:${roster.internalId}`, cricdataId);
-      }
-    } catch (e: any) {
-      if (e instanceof CricDataBudgetExceededError) {
-        return res.status(429).json({ error: "Daily API budget exceeded", budgetExceeded: true });
-      }
-      logger.warn("[players] CricData search failed", { name: roster.name, error: e.message });
-    }
-  }
-
-  if (!cricdataId) {
-    return res.status(404).json({ error: "Player not found in CricData" });
-  }
-
-  try {
-    const player = await getCricDataPlayer(cricdataId);
-    const normalized = {
-      cricInfoId:  roster.cricbuzzPlayerId,
-      name:        player.name,
-      country:     player.country,
-      role:        player.role,
-      age:         0,
-      testStats:   toFrontendStats(player.career, "TEST"),
-      odiStats:    toFrontendStats(player.career, "ODI"),
-      t20Stats:    toFrontendStats(player.career, "T20I"),
-      iplStats:    toFrontendStats(player.career, "IPL"),
-      recentForm:  [],
-    };
-    await cacheSet(cacheKey, normalized, TTL.CAREER_STATS);
-    res.json(normalized);
-  } catch (e: any) {
-    if (e instanceof CricDataBudgetExceededError) {
-      return res.status(429).json({ error: "Daily API budget exceeded", budgetExceeded: true });
-    }
-    logger.error("[players] Stats fetch failed", { internalId, error: e.message });
-    res.status(502).json({ error: "Stats fetch failed", detail: e.message });
-  }
+  const normalized = {
+    cricInfoId:  snapshot.cricbuzzPlayerId,
+    name:        snapshot.name,
+    country:     snapshot.country,
+    role:        snapshot.role,
+    age:         0,
+    testStats:   toFrontendStats(snapshot.career, "TEST"),
+    odiStats:    toFrontendStats(snapshot.career, "ODI"),
+    t20Stats:    toFrontendStats(snapshot.career, "T20I"),
+    iplStats:    toFrontendStats(snapshot.career, "IPL"),
+    recentForm:  snapshot.recentForm,
+    statsPending: !snapshot.hasStats,
+  };
+  res.json(normalized);
 });
 
 // GET /api/players/:internalId/momentum — live momentum from Redis

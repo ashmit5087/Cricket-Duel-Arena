@@ -1,12 +1,11 @@
 import { Router, Request, Response, type IRouter } from "express";
-import { getPlayerStats } from "../services/cricbuzz";
 import { searchPlayer } from "../services/cricbuzz";
-import { getCricDataPlayer, searchCricDataPlayer, CricDataBudgetExceededError } from "../services/cricdata";
 import { cacheGet, cacheSet, publish, TTL, CHANNELS, redis } from "../db/redis";
 import { query, transaction } from "../db/postgres";
 import { logger } from "../utils/logger";
 import { PLAYER_ROSTER, getCricbuzzImageUrl } from "../models/player";
 import { mapStatsToFeatures } from "../lib/features";
+import { loadPlayerSnapshot, type PlayerSnapshot } from "../lib/snapshot";
 
 export const battleRouter: IRouter = Router();
 
@@ -61,14 +60,42 @@ async function resolvePlayer(idOrName: string): Promise<{
   );
   if (known) return known;
 
-  const results = await searchPlayer(normalized);
-  if (!results.length) throw new Error(`Player '${idOrName}' not found`);
+  // Roster miss — check DB (previous dynamic players), else queue for the
+  // refresher and serve a placeholder. NO synchronous external calls.
+  const dbRes = await query(
+    `SELECT internal_id, COALESCE(cricbuzz_player_id, '') AS cricbuzz_player_id,
+            name, country, role
+       FROM players WHERE internal_id = $1 OR LOWER(name) = LOWER($1)
+      LIMIT 1`,
+    [normalized]
+  );
+  if (dbRes[0]) {
+    const p = dbRes[0];
+    return {
+      internalId: p.internal_id,
+      cricbuzzPlayerId: p.cricbuzz_player_id ?? "",
+      name: p.name,
+      country: p.country,
+      flag: "🏏",
+      role: p.role ?? "Unknown",
+      archetypeId: "A",
+      archetypeName: "Unknown",
+    };
+  }
+
+  // Truly unknown — resolve via search (1 credit, cache-aside, permanent),
+  // then queue stats refresh. Search is cheap and rare; stats wait for the worker.
+  let resolved = { id: "", name: normalized, country: "Unknown" };
+  try {
+    const results = await searchPlayer(normalized);
+    if (results.length) resolved = results[0];
+  } catch { /* quota exhausted / network — placeholder still works */ }
 
   const player = {
-    internalId: results[0].name.toLowerCase().replace(/ /g, "-"),
-    cricbuzzPlayerId: results[0].id,
-    name: results[0].name,
-    country: results[0].country,
+    internalId: resolved.name.toLowerCase().replace(/ /g, "-"),
+    cricbuzzPlayerId: resolved.id,
+    name: resolved.name,
+    country: resolved.country,
     flag: "🏏",
     role: "Unknown",
     archetypeId: "A",
@@ -76,6 +103,17 @@ async function resolvePlayer(idOrName: string): Promise<{
   };
 
   await persistDynamicPlayer(player);
+  await query(
+    `INSERT INTO refresh_queue (internal_id, cricbuzz_player_id, name, country)
+     VALUES ($1,$2,$3,$4)
+     ON CONFLICT (internal_id) DO NOTHING`,
+    [player.internalId, player.cricbuzzPlayerId, player.name, player.country]
+  ).catch(() => {});
+  await query(
+    `UPDATE players SET pending_refresh = TRUE WHERE internal_id = $1`,
+    [player.internalId]
+  ).catch(() => {});
+
   return player;
 }
 
@@ -91,34 +129,19 @@ async function computeBattle(p1Id: string, p2Id: string, algorithms: string[] = 
   const cached = await cacheGet(cacheKey);
   if (cached) return cached;
 
-  // ── Resolve CricData UUIDs (1 search call per player if not cached)
-  async function resolveCricDataId(roster: typeof roster1): Promise<string | null> {
-    const idKey = `cricdata:id:${roster.internalId}`;
-    const cached = await cacheGet<string>(idKey);
-    if (cached) return cached;
-    try {
-      const results = await searchCricDataPlayer(roster.name);
-      if (results[0]) {
-        await redis.set(idKey, results[0].id);   // permanent cache
-        return results[0].id;
-      }
-    } catch { /* budget exceeded or network — fall through */ }
-    return null;
-  }
-
-  const [cdId1, cdId2] = await Promise.all([
-    resolveCricDataId(roster1),
-    resolveCricDataId(roster2),
+  // ── Load snapshots from Postgres (DB-only — no external calls here)
+  const [snap1, snap2] = await Promise.all([
+    loadPlayerSnapshot(roster1.internalId),
+    loadPlayerSnapshot(roster2.internalId),
   ]);
 
-  // ── Fetch live career stats via CricData (1 call per player if UUID known)
-  const [stats1res, stats2res] = await Promise.allSettled([
-    cdId1 ? getCricDataPlayer(cdId1) : Promise.reject("no-id"),
-    cdId2 ? getCricDataPlayer(cdId2) : Promise.reject("no-id"),
-  ]);
+  const statsPending = (snap: PlayerSnapshot | null) => !snap?.hasStats;
+  const p1Pending = statsPending(snap1);
+  const p2Pending = statsPending(snap2);
 
-  const stats1 = stats1res.status === "fulfilled" ? stats1res.value : null;
-  const stats2 = stats2res.status === "fulfilled" ? stats2res.value : null;
+  // Shape snapshots into the career format the rest of the route expects
+  const stats1 = snap1 ? { playerId: snap1.cricbuzzPlayerId, playerName: snap1.name, country: snap1.country, role: snap1.role, battingStyle: "-", bowlingStyle: "-", career: snap1.career } : null;
+  const stats2 = snap2 ? { playerId: snap2.cricbuzzPlayerId, playerName: snap2.name, country: snap2.country, role: snap2.role, battingStyle: "-", bowlingStyle: "-", career: snap2.career } : null;
 
   // ── ML: Multi-algorithm battle prediction
   let mlResult: any = null;
@@ -169,6 +192,13 @@ async function computeBattle(p1Id: string, p2Id: string, algorithms: string[] = 
     }
 
   const result = {
+    statsPending: {
+      p1: p1Pending,
+      p2: p2Pending,
+      message: (p1Pending || p2Pending)
+        ? "Scouting report in progress — full stats will appear after the next snapshot refresh (up to 8h). Battle verdict uses current Elo + available data."
+        : null,
+    },
     p1: {
       internalId:       roster1.internalId,
       cricbuzzPlayerId: roster1.cricbuzzPlayerId,
@@ -370,9 +400,6 @@ battleRouter.get("/", async (req: Request, res: Response) => {
     const result = await computeBattle(p1, p2, algorithms);
     res.json(result);
   } catch (e: any) {
-    if (e instanceof CricDataBudgetExceededError) {
-      return res.status(429).json({ error: "Daily API budget exceeded", budgetExceeded: true });
-    }
     logger.error("[battle] Compute failed", { p1, p2, error: e.message });
     res.status(502).json({ error: "Battle computation failed", detail: e.message });
   }
