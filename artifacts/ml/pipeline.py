@@ -54,9 +54,14 @@ class CricketDNAPipeline:
     def fit(self, df: pd.DataFrame):
         """
         df: DataFrame from features.build_all_vectors()
-        Must have columns: cricInfoId, name, archetype_id, dim_0 … dim_19
+        Must have columns: cricInfoId, name, archetype_id, dim_0 ... dim_19
         """
-        self.df = df.copy()
+        df = df.copy()
+        # cricInfoId must stay a string for URL-path lookups (FastAPI hands
+        # us the path param as a string, but Cricinfo returns ints from the
+        # scraper). Coerce once here so every downstream lookup matches.
+        df["cricInfoId"] = df["cricInfoId"].astype(str)
+        self.df = df
         self.player_index = list(df["cricInfoId"].values)
 
         X = df[FEATURE_COLS].values.astype(np.float32)
@@ -276,10 +281,13 @@ class CricketDNAPipeline:
             self.sim_matrix     = np.load(os.path.join(DATA_DIR, "sim_matrix.npy"))
             self.vectors_scaled = np.load(os.path.join(DATA_DIR, "vectors.npy"))
             self.df             = pd.read_csv(os.path.join(DATA_DIR, "players.csv"))
+            # Same coercion as in fit() — pd.read_csv infers int64 when all
+            # values are numeric, but URL-path lookups are strings.
+            self.df["cricInfoId"] = self.df["cricInfoId"].astype(str)
             with open(os.path.join(DATA_DIR, "tsne_coords.json")) as f:
                 self.tsne_coords = json.load(f)
             with open(os.path.join(DATA_DIR, "player_index.json")) as f:
-                self.player_index = json.load(f)
+                self.player_index = [str(x) for x in json.load(f)]
             self.fitted = True
             print(f"[Pipeline] Loaded from disk ({len(self.player_index)} players)")
             return True

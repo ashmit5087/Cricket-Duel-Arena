@@ -103,6 +103,7 @@ def get_knn(player_id: str, k: int = Query(default=5, ge=1, le=20)):
     player_id: ESPN Cricinfo ID (e.g. "253802" for Kohli)
     """
     _check_ready()
+    player_id = str(player_id)
     twins = pipeline.get_twins(player_id, k=k)
     if not twins and player_id not in pipeline.player_index:
         raise HTTPException(status_code=404, detail=f"Player {player_id} not in pipeline")
@@ -134,7 +135,7 @@ def get_similarity(p1: str = Query(...), p2: str = Query(...)):
     Used by the Express battle route.
     """
     _check_ready()
-    score = pipeline.get_similarity(p1, p2)
+    score = pipeline.get_similarity(str(p1), str(p2))
     if score < 0:
         raise HTTPException(status_code=404, detail="One or both players not found")
     return {"p1": p1, "p2": p2, "similarity": score}
@@ -146,6 +147,7 @@ def get_similarity(p1: str = Query(...), p2: str = Query(...)):
 def get_cluster(player_id: str):
     """Returns the archetype cluster assignment for a player."""
     _check_ready()
+    player_id = str(player_id)
     rows = pipeline.df[pipeline.df["cricInfoId"] == player_id]
     if rows.empty:
         raise HTTPException(status_code=404, detail=f"Player {player_id} not found")

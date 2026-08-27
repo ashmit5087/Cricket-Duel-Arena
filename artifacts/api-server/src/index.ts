@@ -115,7 +115,9 @@ function resolveEspnId(internalId: string): string | null {
 
 async function proxyToML(path: string, res: any) {
   try {
-    const r = await fetch(`${ML_URL}${path}`, { signal: AbortSignal.timeout(4000) });
+    // 60s: covers ml-service cold-start on Render free tier (30-50s).
+    // Once warm, responses are <100ms.
+    const r = await fetch(`${ML_URL}${path}`, { signal: AbortSignal.timeout(60_000) });
     const body = await r.json();
     res.status(r.ok ? 200 : r.status).json(body);
   } catch (e: any) {
