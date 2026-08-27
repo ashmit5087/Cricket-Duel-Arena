@@ -125,6 +125,23 @@ async function migrate() {
 
     logger.info("[migrate] quiz_attempts table ensured");
 
+    // ── stats_source column on player_career_stats (Task 3) ──────────────
+    // Records which backend served each row: 'scraper' (free, primary) or
+    // 'rapidapi' (3-credit fallback when scraper fails). Defaults to
+    // 'rapidapi' for backward-compat with rows written before this column
+    // existed — they were fetched via getPlayerStats().
+
+    await client.query(`
+      ALTER TABLE player_career_stats
+        ADD COLUMN IF NOT EXISTS stats_source TEXT NOT NULL DEFAULT 'rapidapi'
+    `);
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_career_stats_source
+        ON player_career_stats(stats_source)
+    `);
+
+    logger.info("[migrate] stats_source column ensured");
+
     // ── Add ml_verdicts column to battle_outcomes if missing ──────────────
 
     await client.query(`

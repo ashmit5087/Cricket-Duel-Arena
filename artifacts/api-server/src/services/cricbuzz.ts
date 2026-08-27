@@ -1,5 +1,6 @@
 import { logger } from "../utils/logger";
 import { redis } from "../db/redis";
+import { fetchPlayerStatsFromScraper, type ScraperPlayerStats } from "./scraper";
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
@@ -415,4 +416,91 @@ export async function searchPlayer(name: string): Promise<{ id: string; name: st
     name:    p.fullName ?? p.name,
     country: p.ctrName ?? "Unknown",
   }));
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Task 3: Scraper-first fallback chain for career stats.
+//
+// Tries the free Cricbuzz scraper (ml-service /scrape/player-stats/{id})
+// first. If it returns well-formed data (≥1 format row with matches>0), use
+// it. Otherwise fall back to the metered RapidAPI path.
+//
+// Returns both the parsed stats AND which source served them, so callers
+// (bootstrap, refresher) can record stats_source on each row.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type StatsSource = "scraper" | "rapidapi";
+
+export interface PlayerStatsWithSource {
+  source: StatsSource;
+  stats:  CricbuzzPlayerStats;
+}
+
+const FORMAT_KEY_MAP: Record<keyof ScraperPlayerStats["stats"], "TEST" | "ODI" | "T20I" | "IPL"> = {
+  testMatches: "TEST",
+  odiMatches:  "ODI",
+  t20Matches:  "T20I",
+  ipl:         "IPL",
+};
+
+function adaptScraperToCricbuzzShape(
+  cbId: string,
+  scraper: ScraperPlayerStats
+): CricbuzzPlayerStats {
+  const career: CricbuzzPlayerStats["career"] = [];
+  for (const key of Object.keys(FORMAT_KEY_MAP) as (keyof ScraperPlayerStats["stats"])[]) {
+    const format = FORMAT_KEY_MAP[key];
+    const row = scraper.stats?.[key];
+    if (!row || (row.Mat ?? 0) <= 0) continue;
+    career.push({
+      format,
+      matches:  row.Mat  ?? 0,
+      innings:  row.Inn  ?? 0,
+      runs:     row.Runs ?? 0,
+      avg:      row.Avg  ?? 0,
+      sr:       row.SR   ?? 0,
+      hundreds: row["100"] ?? 0,
+      fifties:  row["50"]  ?? 0,
+      highest:  row.HS   ?? "0",
+      wickets:  row.Wkts ?? 0,
+      economy:  row.Econ ?? 0,
+      bestBowl: row.BBI  ?? "-",
+    });
+  }
+  return {
+    playerId:     cbId,
+    playerName:   scraper.name  || "Unknown",
+    country:      scraper.country || "Unknown",
+    role:         scraper.role  || "Batter",
+    battingStyle: scraper.battingStyle || "Unknown",
+    bowlingStyle: scraper.bowlingStyle || "-",
+    career,
+  };
+}
+
+function isValidScraperResult(s: CricbuzzPlayerStats): boolean {
+  if (!s.career || s.career.length === 0) return false;
+  // At least one format must have a positive match count — guards against
+  // an SPA-style empty page being returned with status 200.
+  return s.career.some((c) => c.matches > 0);
+}
+
+export async function getPlayerStatsWithFallback(
+  cricbuzzPlayerId: string
+): Promise<PlayerStatsWithSource> {
+  // 1) Try the free scraper first.
+  try {
+    const scraper = await fetchPlayerStatsFromScraper(cricbuzzPlayerId);
+    const adapted = adaptScraperToCricbuzzShape(cricbuzzPlayerId, scraper);
+    if (isValidScraperResult(adapted)) {
+      return { source: "scraper", stats: adapted };
+    }
+    logger.debug("[cricbuzz] Scraper returned empty/malformed — falling back to RapidAPI", { cbId: cricbuzzPlayerId });
+  } catch (e: any) {
+    logger.debug("[cricbuzz] Scraper call failed — falling back to RapidAPI", { cbId: cricbuzzPlayerId, error: e.message });
+  }
+
+  // 2) Fall back to RapidAPI (spends 3 credits).
+  const stats = await getPlayerStats(cricbuzzPlayerId);
+  return { source: "rapidapi", stats };
 }

@@ -5,15 +5,16 @@
 // Replaces poller.ts (10s live polling) under a 200-credit/month budget:
 //   • Every 12h: 1 credit for live matches → if any, 1 per scorecard,
 //     extracting ALL batsmen/bowlers into players.recent_form.
-//   • Career stats (3 credits) only for touched players whose snapshot is
-//     older than CAREER_MIN_AGE_MS, plus a monthly-capped round-robin.
+//   • Career stats (FREE via scraper; 3 credits via RapidAPI as fallback)
+//     only for touched players whose snapshot is older than
+//     CAREER_MIN_AGE_MS, plus a monthly-capped round-robin.
 //   • Drains refresh_queue (roster-miss players queued by battle.ts).
 //
 // Cold-start safety: freshness is read from Postgres (MAX(last_synced)),
 // never memory. A Redis SETNX lock prevents restart/manual-trigger races.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { getLiveMatches, getMatchScorecard, getPlayerStats } from "../services/cricbuzz";
+import { getLiveMatches, getMatchScorecard, getPlayerStatsWithFallback } from "../services/cricbuzz";
 import { query } from "../db/postgres";
 import { redis } from "../db/redis";
 import { upsertCareerStats } from "../lib/snapshot";
@@ -28,7 +29,10 @@ const LOCK_TTL_SECONDS = 600; // 10 min — enough for one full cycle
 const CAREER_MIN_AGE_MS = parseInt(process.env.CAREER_MIN_AGE_MS ?? String(20 * 60 * 60 * 1000), 10);
 
 // Round-robin backfill: refresh the single stalest player per cycle, capped
-// monthly so it can't eat the budget (21 players × 3 credits = 63/mo).
+// monthly so it can't eat the budget. Most calls are free via the scraper;
+// the cap is a safety net in case the scraper is down for an extended period
+// and we end up spending 3 credits per player on the fallback path.
+// (21 players × 3 credits = 63/mo worst case.)
 const ROUND_ROBIN_MONTHLY_CAP = parseInt(process.env.ROUND_ROBIN_MONTHLY_CAP ?? "21", 10);
 const ROUND_ROBIN_MAX_AGE_DAYS = 30;
 
@@ -166,8 +170,9 @@ async function refreshCareerStats(cricbuzzPlayerIds: Set<string>): Promise<void>
       const playerId = res[0]?.id;
       if (!playerId) continue;
 
-      const stats = await getPlayerStats(cbId); // 3 credits
-      await upsertCareerStats(playerId, stats.career);
+      const { source, stats } = await getPlayerStatsWithFallback(cbId);
+      await upsertCareerStats(playerId, stats.career, source);
+      logger.debug("[refresher] Career stats refreshed", { cbId, source, formats: stats.career.length });
     } catch (e: any) {
       logger.warn("[refresher] Career stats refresh failed", { cbId, error: e.message });
     }
@@ -263,8 +268,9 @@ export async function runRefreshCycle(): Promise<void> {
         logger.info("[refresher] No live matches");
       }
 
-      // 3 credits per touched player — career stats, but only if stale
-      // (freshness gate keeps busy match days cheap)
+      // Career stats: free via scraper, 3 credits via RapidAPI fallback.
+      // Freshness gate keeps busy match days cheap (most touched players
+      // were synced in a previous cycle).
       const staleTouched = await filterStalePlayers(touched);
       if (staleTouched.size < touched.size) {
         logger.debug(`[refresher] Career refresh: ${staleTouched.size}/${touched.size} touched players stale`);

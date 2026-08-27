@@ -22,6 +22,8 @@ interface CareerRow {
   hundreds: number;
   fifties:  number;
   highest:  string;
+  lastSynced:  string;
+  statsSource: string;
 }
 
 interface PlayerRow {
@@ -43,7 +45,8 @@ async function loadKohliSnapshot(): Promise<{ player: PlayerRow; career: CareerR
   if (!player) return null;
 
   const career = await query<CareerRow>(
-    `SELECT format, matches, runs, avg, sr, hundreds, fifties, highest
+    `SELECT format, matches, runs, avg, sr, hundreds, fifties, highest,
+            last_synced, stats_source
        FROM player_career_stats
       WHERE player_id = $1`,
     [player.id]
@@ -164,6 +167,15 @@ kohliRouter.get("/", async (_req: Request, res: Response) => {
 
     const { player, career } = snapshot;
 
+    // Use the most-recent last_synced as the actual data timestamp —
+    // gives the frontend a real "updated Nh ago" instead of "we cached
+    // this N seconds ago".
+    const lastSynced = career
+      .map((c) => c.lastSynced)
+      .filter(Boolean)
+      .sort()
+      .pop();
+
     // 3. Build shrine response
     const shrine = {
       playerId:     KOHLI_INTERNAL_ID,
@@ -174,7 +186,8 @@ kohliRouter.get("/", async (_req: Request, res: Response) => {
       careerArc:    buildKohliCareerArc(career),
       currentStats: buildCurrentStats(career),
       records:      buildRecords(career),
-      lastUpdated:  new Date().toISOString(),
+      lastUpdated:  lastSynced ?? new Date().toISOString(),
+      statsSource:  career.find((c) => c.statsSource)?.statsSource ?? "unknown",
     };
 
     // 4. Cache and return

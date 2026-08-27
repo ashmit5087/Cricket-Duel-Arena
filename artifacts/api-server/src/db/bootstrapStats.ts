@@ -2,9 +2,11 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // One-off, IDEMPOTENT career-stats bootstrap.
 //
-// Fetches Cricbuzz career stats (3 credits each) for every player that has a
-// cricbuzz_player_id but NO rows in player_career_stats yet. Safe to run on
-// every deploy: once everyone is synced it spends 0 credits and exits.
+// Fetches career stats (FREE via the Cricbuzz scraper; RapidAPI as 3-credit
+// fallback when the scraper fails or returns empty data) for every player
+// that has a cricbuzz_player_id but NO rows in player_career_stats yet. Safe
+// to run on every deploy: once everyone is synced it spends 0 credits and
+// exits.
 //
 // Run manually:   pnpm bootstrap:stats
 // Or via Render:  baked into startCommand after migrate.js (see render.yaml)
@@ -18,7 +20,7 @@
 
 import "dotenv/config";
 import { pool, query } from "./postgres";
-import { getPlayerStats, QuotaExhaustedError, QuotaBlockedError, getQuotaRemaining } from "../services/cricbuzz";
+import { getPlayerStatsWithFallback, QuotaExhaustedError, QuotaBlockedError, getQuotaRemaining } from "../services/cricbuzz";
 import { upsertCareerStats } from "../lib/snapshot";
 import { cacheGet, cacheSet } from "./redis";
 import { logger } from "../utils/logger";
@@ -64,7 +66,8 @@ async function bootstrap(): Promise<void> {
     }
 
     try {
-      const stats = await getPlayerStats(player.cricbuzz_player_id); // 3 credits
+      // Scraper first (free), RapidAPI fallback. Records which source served.
+      const { source, stats } = await getPlayerStatsWithFallback(player.cricbuzz_player_id);
 
       if (!stats.career.length) {
         // Fetched OK but Cricbuzz has no stats for this ID — mark so we
@@ -75,9 +78,9 @@ async function bootstrap(): Promise<void> {
         continue;
       }
 
-      const rows = await upsertCareerStats(player.id, stats.career);
+      const rows = await upsertCareerStats(player.id, stats.career, source);
       done++;
-      logger.info(`[bootstrap] ✅ ${player.name} (${done}/${pending.length})`, { formats: rows });
+      logger.info(`[bootstrap] ✅ ${player.name} (${done}/${pending.length})`, { formats: rows, source });
     } catch (e: any) {
       if (e instanceof QuotaExhaustedError || e instanceof QuotaBlockedError) {
         // Quota errors are NOT player failures — don't mark this ID as

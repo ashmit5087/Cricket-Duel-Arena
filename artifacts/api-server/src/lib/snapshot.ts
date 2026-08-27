@@ -13,30 +13,37 @@ import type { CricbuzzPlayerStats } from "../services/cricbuzz";
 
 // ── Write path (used by refresher worker + one-off bootstrap script) ─────────
 
+import type { StatsSource } from "../services/cricbuzz";
+
 /**
  * Upsert parsed Cricbuzz career rows into player_career_stats.
  * Bumps last_synced — that timestamp drives staleness checks everywhere.
+ * The `source` arg records which backend served the row ("scraper" or
+ * "rapidapi") for observability + cost auditing (Task 3).
  */
 export async function upsertCareerStats(
   playerId: string,
-  career: CricbuzzPlayerStats["career"]
+  career: CricbuzzPlayerStats["career"],
+  source: StatsSource = "rapidapi"
 ): Promise<number> {
   let written = 0;
   for (const c of career) {
     await query(
       `INSERT INTO player_career_stats
          (player_id, format, matches, innings, runs, avg, sr, hundreds, fifties,
-          highest, wickets, economy, best_bowl, last_synced)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,NOW())
+          highest, wickets, economy, best_bowl, last_synced, stats_source)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,NOW(),$14)
        ON CONFLICT (player_id, format) DO UPDATE SET
          matches = EXCLUDED.matches, innings = EXCLUDED.innings,
          runs = EXCLUDED.runs, avg = EXCLUDED.avg, sr = EXCLUDED.sr,
          hundreds = EXCLUDED.hundreds, fifties = EXCLUDED.fifties,
          highest = EXCLUDED.highest, wickets = EXCLUDED.wickets,
          economy = EXCLUDED.economy, best_bowl = EXCLUDED.best_bowl,
-         last_synced = NOW()`,
+         last_synced = NOW(),
+         stats_source = EXCLUDED.stats_source`,
       [playerId, c.format, c.matches, c.innings, c.runs, c.avg, c.sr,
-       c.hundreds, c.fifties, c.highest, c.wickets ?? 0, c.economy ?? 0, c.bestBowl ?? "-"]
+       c.hundreds, c.fifties, c.highest, c.wickets ?? 0, c.economy ?? 0, c.bestBowl ?? "-",
+       source]
     );
     written++;
   }

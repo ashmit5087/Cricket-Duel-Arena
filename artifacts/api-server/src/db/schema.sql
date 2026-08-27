@@ -60,10 +60,12 @@ CREATE TABLE IF NOT EXISTS player_career_stats (
   economy     NUMERIC(5,2) DEFAULT 0,
   best_bowl   TEXT DEFAULT '-',
   last_synced TIMESTAMPTZ DEFAULT NOW(),
+  stats_source TEXT NOT NULL DEFAULT 'rapidapi',     -- 'scraper' | 'rapidapi' (Task 3)
   UNIQUE(player_id, format)
 );
 
 CREATE INDEX IF NOT EXISTS idx_career_stats_player ON player_career_stats(player_id);
+CREATE INDEX IF NOT EXISTS idx_career_stats_source ON player_career_stats(stats_source);
 
 -- ============================================================
 -- MATCHES
