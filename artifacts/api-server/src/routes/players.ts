@@ -20,16 +20,25 @@ export const playersRouter: IRouter = Router();
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+// node-pg returns NUMERIC columns as strings by default. Coerce so downstream
+// math / .toFixed() calls work without surprises. All inputs come from
+// player_career_stats in Postgres.
+function num(v: unknown, fallback = 0): number {
+  if (v === null || v === undefined) return fallback;
+  const n = typeof v === "number" ? v : parseFloat(String(v));
+  return Number.isFinite(n) ? n : fallback;
+}
+
 function toFrontendStats(career: SnapshotCareerRow[], format: string) {
   const row = career.find((c) => c.format === format);
   return {
-    matches:  row?.matches  ?? 0,
-    runs:     row?.runs     ?? 0,
-    avg:      row?.avg      ?? 0,
-    sr:       row?.sr       ?? 0,
-    hundreds: row?.hundreds ?? 0,
-    fifties:  row?.fifties  ?? 0,
-    hs:       parseInt(row?.highest?.replace("*", "") ?? "0"),
+    matches:  num(row?.matches),
+    runs:     num(row?.runs),
+    avg:      num(row?.avg),
+    sr:       num(row?.sr),
+    hundreds: num(row?.hundreds),
+    fifties:  num(row?.fifties),
+    hs:       parseInt(String(row?.highest ?? "0").replace("*", "")) || 0,
   };
 }
 
@@ -55,17 +64,17 @@ async function buildNormalisedPlayer(
     careerRows.find((c) => c.format === fmt);
 
   const toStats = (raw: ReturnType<typeof getFormat>) => ({
-    matches:  raw?.matches  ?? 0,
-    innings:  raw?.innings  ?? 0,
-    runs:     raw?.runs     ?? 0,
-    avg:      raw?.avg      ?? 0,
-    sr:       raw?.sr       ?? 0,
-    hundreds: raw?.hundreds ?? 0,
-    fifties:  raw?.fifties  ?? 0,
-    highest:  raw?.highest  ?? "0",
-    wickets:  raw?.wickets  ?? 0,
-    economy:  raw?.economy  ?? 0,
-    bestBowl: raw?.bestBowl ?? "-",
+    matches:  num(raw?.matches),
+    innings:  num(raw?.innings),
+    runs:     num(raw?.runs),
+    avg:      num(raw?.avg),
+    sr:       num(raw?.sr),
+    hundreds: num(raw?.hundreds),
+    fifties:  num(raw?.fifties),
+    highest:  String(raw?.highest  ?? "0"),
+    wickets:  num(raw?.wickets),
+    economy:  num(raw?.economy),
+    bestBowl: String(raw?.bestBowl ?? "-"),
   });
 
   // Fetch ML metrics from Python service

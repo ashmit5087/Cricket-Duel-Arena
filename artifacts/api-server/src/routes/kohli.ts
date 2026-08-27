@@ -15,12 +15,12 @@ const SHRINE_CACHE_KEY  = "kohli:shrine:v2";
 
 interface CareerRow {
   format:   string;
-  matches:  number;
-  runs:     number;
-  avg:      number;
-  sr:       number;
-  hundreds: number;
-  fifties:  number;
+  matches:  number | string;  // node-pg returns numeric as string by default
+  runs:     number | string;
+  avg:      number | string;
+  sr:       number | string;
+  hundreds: number | string;
+  fifties:  number | string;
   highest:  string;
   lastSynced:  string;
   statsSource: string;
@@ -33,7 +33,25 @@ interface PlayerRow {
   batting_style: string | null;
 }
 
-async function loadKohliSnapshot(): Promise<{ player: PlayerRow; career: CareerRow[] } | null> {
+// Shape of CareerRow AFTER node-pg numeric → JS number coercion in
+// loadKohliSnapshot. Everything numeric is guaranteed to be a real number
+// here, so downstream math / .toFixed() / comparisons are type-safe.
+interface NormalisedCareerRow {
+  format:      string;
+  matches:     number;
+  runs:        number;
+  avg:         number;
+  sr:          number;
+  hundreds:    number;
+  fifties:     number;
+  highest:     string;
+  lastSynced:  string;
+  statsSource: string;
+}
+
+async function loadKohliSnapshot(): Promise<
+  { player: PlayerRow; career: NormalisedCareerRow[] } | null
+> {
   const players = await query<PlayerRow & { id: string }>(
     `SELECT id, name, country, role, batting_style
        FROM players
@@ -45,14 +63,29 @@ async function loadKohliSnapshot(): Promise<{ player: PlayerRow; career: CareerR
   if (!player) return null;
 
   const career = await query<CareerRow>(
-    `SELECT format, matches, runs, avg, sr, hundreds, fifties, highest,
-            last_synced, stats_source
+    `SELECT format, matches, innings, runs, avg, sr, hundreds, fifties,
+            highest, last_synced, stats_source
        FROM player_career_stats
       WHERE player_id = $1`,
     [player.id]
   );
 
-  return { player, career };
+  // node-postgres returns NUMERIC columns as strings by default. Coerce here
+  // so downstream `.toFixed()` / math operations work without surprises.
+  const normalized: NormalisedCareerRow[] = career.map((c) => ({
+    format:     c.format,
+    matches:    Number(c.matches)  || 0,
+    runs:       Number(c.runs)     || 0,
+    avg:        Number(c.avg)      || 0,
+    sr:         Number(c.sr)       || 0,
+    hundreds:   Number(c.hundreds) || 0,
+    fifties:    Number(c.fifties)  || 0,
+    highest:    c.highest,
+    lastSynced: c.lastSynced,
+    statsSource: c.statsSource,
+  }));
+
+  return { player, career: normalized };
 }
 
 // ── Career arc helpers ────────────────────────────────────────────────────────
@@ -64,7 +97,7 @@ interface CareerArcPoint {
   t20:  number | null;
 }
 
-function buildKohliCareerArc(career: CareerRow[]): CareerArcPoint[] {
+function buildKohliCareerArc(career: NormalisedCareerRow[]): CareerArcPoint[] {
   const odiRow  = career.find((c) => c.format === "ODI");
   const testRow = career.find((c) => c.format === "TEST");
   const t20Row  = career.find((c) => c.format === "T20I");
@@ -105,7 +138,7 @@ interface LiveCareerStats {
   hs:       number;
 }
 
-function buildCurrentStats(career: CareerRow[]): LiveCareerStats {
+function buildCurrentStats(career: NormalisedCareerRow[]): LiveCareerStats {
   const odiRow = career.find((c) => c.format === "ODI");
   return {
     matches:  odiRow?.matches  ?? 0,
@@ -124,7 +157,7 @@ interface ShrineRecord {
   context: string;
 }
 
-function buildRecords(career: CareerRow[]): ShrineRecord[] {
+function buildRecords(career: NormalisedCareerRow[]): ShrineRecord[] {
   return [
     {
       value:   career.find((c) => c.format === "ODI")?.hundreds.toString() ?? "80",

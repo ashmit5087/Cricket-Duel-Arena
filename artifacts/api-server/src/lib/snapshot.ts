@@ -104,16 +104,16 @@ export async function loadPlayerSnapshot(internalIdOrCricbuzzId: string): Promis
 
   const career: SnapshotCareerRow[] = statsRows.map((r: any) => ({
     format:   r.format,
-    matches:  r.matches ?? 0,
-    innings:  r.innings ?? 0,
-    runs:     r.runs ?? 0,
+    matches:  Number(r.matches ?? 0),
+    innings:  Number(r.innings ?? 0),
+    runs:     Number(r.runs ?? 0),
     avg:      Number(r.avg ?? 0),
     sr:       Number(r.sr ?? 0),
-    hundreds: r.hundreds ?? 0,
-    fifties:  r.fifties ?? 0,
+    hundreds: Number(r.hundreds ?? 0),
+    fifties:  Number(r.fifties ?? 0),
     highest:  r.highest ?? "0",
-    wickets:  r.wickets ?? 0,
-    economy:  r.economy ? Number(r.economy) : 0,
+    wickets:  Number(r.wickets ?? 0),
+    economy:  Number(r.economy ?? 0),
     bestBowl: r.best_bowl ?? "-",
   }));
 
