@@ -12,6 +12,8 @@ end-to-end flow is live.
 |---|---|---|
 | `a3dd03e` | `ml-service` + `api-server` | Replaces the broken HTML scraper with a working JSON-API scraper, and fixes 30 wrong Cricbuzz player IDs |
 | `4caa87d` | Frontend (Vercel) | Adds `useLiveTicker` and `useKohliShrineLive` hooks for live pop-ups |
+| `7d8760c`, `7bda078` | `api-server` | Coerces PG `NUMERIC` columns to JS numbers + aliases snake_case columns in career-stats reads (fixes `/api/kohli` 500 and `statsSource: "unknown"`) |
+| _(keep-alive commit)_ | `ml-service` | Adds self-ping keep-alive to prevent Render free-tier sleep |
 
 Render auto-rebuilds and redeploys on push. Both services are already
 running the new code:
@@ -81,6 +83,31 @@ section lives) — add `const { data: live } = useLiveTicker();` and map
 over `live?.matches`. The same pattern for Kohli's `useKohliShrineLive`
 in `src/pages/KohliShrine.tsx`. I left these as separate hooks so you
 can drop them in wherever fits your current UI.
+
+---
+
+## Optional: ml-service keep-alive
+
+The api-server already self-pings every 10 min (Render free tier sleeps
+after 15 min of inactivity). The ml-service was missing the same, so
+every cold start cost users a 30-50s wait. There's now a `keep_alive.py`
+module wired into the FastAPI `lifespan` that pings `ML_URL/health` every
+10 min. It's gated on an env var, so enable it once in the Render
+dashboard:
+
+1. Render dashboard → `cricket-dna-ml` → **Environment** tab
+2. **Add Environment Variable**: `KEEP_ALIVE_ENABLED` = `true`
+3. **Save Changes** — triggers an automatic redeploy
+
+After the redeploy, the boot log will show:
+```
+[keep-alive] Started — pinging https://cricket-dna-ml.onrender.com/health every 10 min
+```
+
+This is **optional but recommended** — the api-server already retries the
+scraper with backoff when it wakes, so nothing breaks if you skip this.
+It just eliminates the cold-start latency on the first request after a
+quiet period.
 
 ---
 

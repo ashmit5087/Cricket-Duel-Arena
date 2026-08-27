@@ -21,6 +21,7 @@ from scraper import load_or_fetch_all
 from features import build_all_vectors, FEATURE_COLS
 from pipeline import pipeline, ARCHETYPE_LABELS
 from scraper.router import router as scraper_router
+from keep_alive import start_keep_alive, stop_keep_alive
 
 # ─── Lifespan (replaces deprecated on_event) ──────────────────────────────────
 
@@ -40,7 +41,9 @@ async def lifespan(app: FastAPI):
         await loop.run_in_executor(None, _fit_pipeline)
 
     print(f"[startup] Ready in {time.time()-t0:.1f}s — {len(pipeline.player_index)} players loaded\n")
+    start_keep_alive()
     yield
+    stop_keep_alive()
     print("[shutdown] ML service stopped")
 
 
