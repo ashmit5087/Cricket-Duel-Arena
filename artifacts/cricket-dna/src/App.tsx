@@ -19,7 +19,7 @@ import Quiz from "@/pages/Quiz";
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      // Never retry failed requests — every retry burns CricData budget
+      // Never retry failed requests — every retry burns API quota
       retry: false,
       // 24h stale time — matches server-side Redis TTL exactly.
       // Data fetched once per day, never re-fetched mid-session.
@@ -56,15 +56,19 @@ function Router() {
   );
 }
 
+import { SmoothScrollProvider } from "@/lib/smooth-scroll";
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <WouterRouter base={import.meta.env.BASE_URL?.replace(/\/$/, "") || ""}>
-          <Router />
-        </WouterRouter>
-        <Toaster />
-      </TooltipProvider>
+      <SmoothScrollProvider>
+        <TooltipProvider>
+          <WouterRouter base={import.meta.env.BASE_URL?.replace(/\/$/, "") || ""}>
+            <Router />
+          </WouterRouter>
+          <Toaster />
+        </TooltipProvider>
+      </SmoothScrollProvider>
     </QueryClientProvider>
   );
 }

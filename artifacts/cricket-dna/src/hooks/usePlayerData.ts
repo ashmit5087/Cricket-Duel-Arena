@@ -28,12 +28,9 @@ import {
   fetchBattle,
   fetchStatementMoments,
   fetchKohliShrine,
-  fetchBudgetStatus,
-  BudgetExceededError,
   type LivePlayerProfile,
   type LiveCareerStats,
   type SearchResult,
-  type BudgetStatusData,
   fetchQuiz,
   submitQuiz,
   fetchQuizLeaderboard,
@@ -369,20 +366,7 @@ export function useKohliShrine() {
 
 // ─── Budget status ───────────────────────────────────────────────────────────
 
-/**
- * Live CricData daily request count.
- * Polls every 5 minutes — does NOT itself count against the 100-req budget.
- */
-export function useBudgetStatus() {
-  return useQuery({
-    queryKey: ["budget", "status"],
-    queryFn: fetchBudgetStatus,
-    staleTime: 1000 * 60 * 5,
-    refetchInterval: 1000 * 60 * 5,
-    placeholderData: { date: "", used: 0, remaining: 100, limit: 100 } as BudgetStatusData,
-    retry: false,
-  });
-}
+
 
 // ─── Prefetch helpers ─────────────────────────────────────────────────────────
 

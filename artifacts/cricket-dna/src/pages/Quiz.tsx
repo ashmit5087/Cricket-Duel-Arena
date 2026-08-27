@@ -61,7 +61,7 @@ function ErrorState({ error, onRetry }: { error: any; onRetry: () => void }) {
       </h2>
       <p className="text-[#888] text-xs sm:text-sm mb-6 max-w-sm">
         {isBudget
-          ? "The daily CricData budget is exhausted. Please come back tomorrow."
+          ? "The API quota is exhausted. Please come back tomorrow."
           : "The quiz generator is having trouble. Make sure GEMINI_API_KEY is configured on the server."}
       </p>
       <button

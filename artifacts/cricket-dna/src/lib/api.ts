@@ -11,9 +11,9 @@ const API = (import.meta.env.VITE_API_URL ?? "http://localhost:3001").replace(/\
 
 // ─── Generic fetch wrapper ────────────────────────────────────────────────────
 
-/** Thrown when the server returns 429 (daily CricData budget exhausted). */
+/** Thrown when the server returns 429 (API quota exhausted). */
 export class BudgetExceededError extends Error {
-  constructor() { super("Daily CricData budget exceeded — showing cached data"); }
+  constructor() { super("API quota exceeded — showing cached data"); }
 }
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
@@ -239,16 +239,7 @@ export const fetchStatementMoments = (p1CricInfoId: string, p2CricInfoId: string
 
 // ─── Budget ──────────────────────────────────────────────────────────────────
 
-export interface BudgetStatusData {
-  date: string;
-  used: number;
-  remaining: number;
-  limit: number;
-}
 
-/** Current CricData daily API usage — safe to poll every few minutes. */
-export const fetchBudgetStatus = () =>
-  apiFetch<BudgetStatusData>("/api/budget");
 
 // ─── Kohli ────────────────────────────────────────────────────────────────────
 
