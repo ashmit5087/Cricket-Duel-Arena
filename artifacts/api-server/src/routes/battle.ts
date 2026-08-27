@@ -4,7 +4,6 @@ import { cacheGet, cacheSet, publish, TTL, CHANNELS, redis } from "../db/redis";
 import { query, transaction } from "../db/postgres";
 import { logger } from "../utils/logger";
 import { PLAYER_ROSTER, getCricbuzzImageUrl } from "../models/player";
-import { mapStatsToFeatures } from "../lib/features";
 import { loadPlayerSnapshot, type PlayerSnapshot } from "../lib/snapshot";
 
 export const battleRouter: IRouter = Router();
@@ -44,6 +43,7 @@ async function persistDynamicPlayer(player: {
 async function resolvePlayer(idOrName: string): Promise<{
   internalId: string;
   cricbuzzPlayerId: string;
+  espnId: string | null;
   name: string;
   country: string;
   flag: string;
@@ -74,6 +74,7 @@ async function resolvePlayer(idOrName: string): Promise<{
     return {
       internalId: p.internal_id,
       cricbuzzPlayerId: p.cricbuzz_player_id ?? "",
+      espnId: null,
       name: p.name,
       country: p.country,
       flag: "🏏",
@@ -94,6 +95,7 @@ async function resolvePlayer(idOrName: string): Promise<{
   const player = {
     internalId: resolved.name.toLowerCase().replace(/ /g, "-"),
     cricbuzzPlayerId: resolved.id,
+    espnId: null as string | null,
     name: resolved.name,
     country: resolved.country,
     flag: "🏏",
@@ -143,38 +145,62 @@ async function computeBattle(p1Id: string, p2Id: string, algorithms: string[] = 
   const stats1 = snap1 ? { playerId: snap1.cricbuzzPlayerId, playerName: snap1.name, country: snap1.country, role: snap1.role, battingStyle: "-", bowlingStyle: "-", career: snap1.career } : null;
   const stats2 = snap2 ? { playerId: snap2.cricbuzzPlayerId, playerName: snap2.name, country: snap2.country, role: snap2.role, battingStyle: "-", bowlingStyle: "-", career: snap2.career } : null;
 
-  // ── ML: Multi-algorithm battle prediction
+  // ── ML: real DNA data via the cluster + similarity proxies
+  // (No /battle/predict endpoint exists on the ML service. We pull each
+  // player's archetype + dnaScore from /cluster, and the 20-dim cosine
+  // similarity from /similarity, which is what /battle/predict would have
+  // computed anyway. espnId is what the ML pipeline is keyed on — using
+  // cricbuzzPlayerId here was the bug that silently fell back to the ODI
+  // average verdict.)
   let mlResult: any = null;
-  try {
-    // Build identity-blind feature vectors for the ML service
-    const p1StatsForML = stats1 ? mapStatsToFeatures(
-      stats1.career?.find((c: any) => c.format === 'TEST'),
-      stats1.career?.find((c: any) => c.format === 'ODI'),
-      stats1.career?.find((c: any) => c.format === 'T20I'),
-      stats1.career?.find((c: any) => c.format === 'IPL'),
-    ) : undefined;
-    const p2StatsForML = stats2 ? mapStatsToFeatures(
-      stats2.career?.find((c: any) => c.format === 'TEST'),
-      stats2.career?.find((c: any) => c.format === 'ODI'),
-      stats2.career?.find((c: any) => c.format === 'T20I'),
-      stats2.career?.find((c: any) => c.format === 'IPL'),
-    ) : undefined;
+  const mlId1 = roster1.espnId ?? roster1.cricbuzzPlayerId;
+  const mlId2 = roster2.espnId ?? roster2.cricbuzzPlayerId;
+  const mlIdsAvailable = !!(roster1.espnId && roster2.espnId);
+  if (mlIdsAvailable) {
+    try {
+      // 60s: covers ml-service cold-start on Render free tier (30-50s).
+      const [c1Res, c2Res, simRes] = await Promise.all([
+        fetch(`${ML_URL}/cluster/${mlId1}`, { signal: AbortSignal.timeout(60_000) }),
+        fetch(`${ML_URL}/cluster/${mlId2}`, { signal: AbortSignal.timeout(60_000) }),
+        fetch(`${ML_URL}/similarity?p1=${mlId1}&p2=${mlId2}`, { signal: AbortSignal.timeout(60_000) }),
+      ]);
+      const c1: any = c1Res.ok ? await c1Res.json() : null;
+      const c2: any = c2Res.ok ? await c2Res.json() : null;
+      const sim: any = simRes.ok ? await simRes.json() : null;
 
-    const mlRes = await fetch(`${ML_URL}/battle/predict`, {
-      method:  "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        p1Id: roster1.cricbuzzPlayerId,
-        p2Id: roster2.cricbuzzPlayerId,
-        algorithms: algorithms,
-        p1Stats: p1StatsForML,
-        p2Stats: p2StatsForML,
-      }),
-      signal: AbortSignal.timeout(5000),
+      const dnaSimilarity = typeof sim?.similarity === "number" ? sim.similarity : null;
+
+      if (dnaSimilarity !== null) {
+        // Winner = player with the higher dnaScore (more "self-actualised"
+        // archetype). Ties go to the player with the higher similarity to
+        // the other — i.e. the more "central" member of the shared archetype.
+        const score1 = c1?.dnaScore ?? 50;
+        const score2 = c2?.dnaScore ?? 50;
+        const winnerByDna = score1 === score2
+          ? (dnaSimilarity >= 50 ? p1Id : p2Id)
+          : (score1 > score2 ? p1Id : p2Id);
+        mlResult = {
+          available:     true,
+          dnaSimilarity,
+          predictedWinner: winnerByDna,
+          confidence:    Math.round(Math.abs(score1 - score2) * 2 * 10) / 10,
+          momentumP1:    score1,
+          momentumP2:    score2,
+          xgboostScore:  dnaSimilarity,
+          archetype1:    c1?.archetype,
+          archetype2:    c2?.archetype,
+          dnaScore1:     score1,
+          dnaScore2:     score2,
+        };
+      }
+    } catch (e) {
+      logger.warn("[battle] ML cluster/similarity proxy failed", { error: (e as Error).message });
+    }
+  } else {
+    logger.warn("[battle] ML skipped — missing espnId", {
+      p1: { internalId: roster1.internalId, espnId: roster1.espnId ?? null },
+      p2: { internalId: roster2.internalId, espnId: roster2.espnId ?? null },
     });
-    if (mlRes.ok) mlResult = await mlRes.json();
-  } catch {
-    logger.warn("[battle] ML service unavailable — using stat-based comparison");
   }
 
   // ── Stat-based comparison (fallback when ML is unavailable)

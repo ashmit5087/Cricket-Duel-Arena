@@ -50,7 +50,10 @@ async function buildNormalisedPlayer(
   const roster = PLAYER_ROSTER.find((p) => p.internalId === internalId);
   if (!roster) return null;
 
-  const cacheKey = `player:full:${internalId}`;
+  // v2 key: forces a one-time re-fetch of all player profiles after the
+  // int/string id fix and the live dnaScore wiring. Old `player:full:*`
+  // entries (with dnaScore: 70 defaults) will expire on their own in 24h.
+  const cacheKey = `player:full:v2:${internalId}`;
   const cached = await cacheGet<NormalisedPlayer>(cacheKey);
   if (cached) return cached;
 

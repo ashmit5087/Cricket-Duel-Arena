@@ -150,20 +150,12 @@ export const KOHLI_2022_KNOCK: Array<{ over: number; ball: number; type: 'dot' |
   { over: 19, ball: 2, type: 'single', desc: '82*. Done. DONE.', runs: 1 },
 ];
 
-export const BATTLE_RESULTS: Record<string, {
-  winner: string;
-  dnaSimilarity: number;
-  archetypeA: string;
-  archetypeB: string;
-  reason: string;
-}> = {
-  "virat-kohli_rohit-sharma": { winner: "virat-kohli", dnaSimilarity: 68, archetypeA: "A", archetypeB: "G", reason: "Chase mastery and consistency across all three formats gives Kohli the edge. Rohit owns the Powerplay; Kohli owns the end game." },
-  "virat-kohli_sachin-tendulkar": { winner: "virat-kohli", dnaSimilarity: 82, archetypeA: "A", archetypeB: "A", reason: "Different eras, near-identical archetypes. Kohli's ODI chase average (82.7) vs Sachin's (90.9) — but Kohli still plays." },
-  "virat-kohli_babar-azam": { winner: "virat-kohli", dnaSimilarity: 78, archetypeA: "A", archetypeB: "A", reason: "Closest DNA match on the map. Babar's technique is pristine. Kohli's big-match differential is unrivalled." },
-  "virat-kohli_joe-root": { winner: "virat-kohli", dnaSimilarity: 74, archetypeA: "A", archetypeB: "A", reason: "Root dominates in Tests; Kohli dominates across all formats simultaneously. The multi-format verdict is decisive." },
-  "virat-kohli_kane-williamson": { winner: "virat-kohli", dnaSimilarity: 76, archetypeA: "A", archetypeB: "A", reason: "Williamson's elegance vs Kohli's intensity. The numbers land the same way the cricket does — in Kohli's favour." },
-  "virat-kohli_ms-dhoni": { winner: "virat-kohli", dnaSimilarity: 58, archetypeA: "A", archetypeB: "H", reason: "The machine vs the wildcard. Dhoni finishes games; Kohli builds innings that make finishing irrelevant." },
-};
+// BATTLE_RESULTS was removed — its hardcoded winner/dnaSimilarity values
+// never matched the live ML output, and the BattleArena component now
+// consumes the real /api/battle response exclusively. If a player pair
+// is missing from the ML pipeline, the route falls back to the ODI
+// average verdict and the UI renders a loading state until the response
+// arrives.
 
 export const RADAR_AXES = [
   "Pressure Score",

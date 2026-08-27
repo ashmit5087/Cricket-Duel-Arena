@@ -141,6 +141,24 @@ app.get("/api/knn", async (req, res) => {
   await proxyToML(`/knn/${espnId}?k=${k}`, res);
 });
 
+// GET /api/similarity?p1=:internalId&p2=:internalId — 20-dim DNA similarity
+// Powers the battle route's dnaSimilarity field. Returns -1 if either player
+// isn't in the ML pipeline (e.g. espnId: null players); the battle route
+// treats -1 as "unavailable" and falls back to stat-based verdict.
+app.get("/api/similarity", async (req, res) => {
+  const p1Internal = String(req.query.p1 ?? "");
+  const p2Internal = String(req.query.p2 ?? "");
+  const p1Espn = resolveEspnId(p1Internal);
+  const p2Espn = resolveEspnId(p2Internal);
+  if (!p1Espn || !p2Espn) {
+    return res.status(404).json({
+      error: "Player not in ML pipeline",
+      detail: !p1Espn ? `No espnId for '${p1Internal}'` : `No espnId for '${p2Internal}'`,
+    });
+  }
+  await proxyToML(`/similarity?p1=${p1Espn}&p2=${p2Espn}`, res);
+});
+
 // ── Health check ──────────────────────────────────────────────────────────────
 
 app.get("/health", async (_req, res) => {

@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { VideoBackground } from "@/components/ui/VideoBackground";
 import { PlayerAvatar } from "@/components/ui/PlayerAvatar";
 import { RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer, Legend } from "recharts";
-import { PLAYERS, BATTLE_RESULTS, ARCHETYPES, RADAR_AXES } from "@/data/mockData";
+import { PLAYERS, ARCHETYPES, RADAR_AXES } from "@/data/mockData";
 import type { Player } from "@/data/mockData";
 import { useBattle, useStatementMoments, usePrefetchPlayer, useAlgorithms } from "@/hooks/usePlayerData";
 
@@ -382,18 +382,14 @@ function BattleView({ p1Id, p2Id, algorithms }: { p1Id: string; p2Id: string; al
 
   const { data: liveResult } = useBattle(p1, p2, algorithms);
 
-  // Pick the winner from whichever source is fresher:
-  //   - If the live API responded, use its statComparison.winner.
-  //   - Otherwise, fall back to the hardcoded BATTLE_RESULTS map (last resort).
-  // The previous version keyed on `mockResult` only, which meant even when
-  // live data arrived with a different verdict, the page showed the mock winner.
-  const resultKey = `${p1Id}_${p2Id}`;
-  const reverseKey = `${p2Id}_${p1Id}`;
-  const mockResult = BATTLE_RESULTS[resultKey] || BATTLE_RESULTS[reverseKey];
-  const result: any = liveResult ?? mockResult;
+  // Winner comes from the live API only. The previous BATTLE_RESULTS
+  // mock map is gone — it was hardcoded numbers that never matched the
+  // actual ML output. While the live request is in flight, we render
+  // a loading state; once it resolves the real verdict appears.
+  const result: any = liveResult;
 
   const liveWinnerId: string | undefined = liveResult?.statComparison?.winner;
-  const winnerId = liveWinnerId ?? mockResult?.winner ?? p1.id;
+  const winnerId = liveWinnerId ?? p1.id;
   const winner = PLAYERS.find((p) => p.id === winnerId) ?? p1;
   const loser = winner?.id === p1.id ? p2 : p1;
 

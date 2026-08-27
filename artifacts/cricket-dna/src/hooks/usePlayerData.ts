@@ -350,7 +350,8 @@ export function useClusters() {
 /**
  * Full battle data for two players.
  * Uses cricInfoIds to fetch from the Cricinfo proxy.
- * Falls back to mockData stats + BATTLE_RESULTS while fetching.
+ * While the request is in flight, BattleArena renders a loading state
+ * (no placeholderData) and upgrades to the live response when it resolves.
  *
  * @param p1  Player object from mockData (has cricInfoId)
  * @param p2  Player object from mockData (has cricInfoId)
