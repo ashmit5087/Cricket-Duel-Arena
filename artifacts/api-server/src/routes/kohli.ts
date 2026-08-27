@@ -1,14 +1,56 @@
 import { Router, Request, Response, type IRouter } from "express";
-import { searchCricDataPlayer, getCricDataPlayer, CricDataBudgetExceededError } from "../services/cricdata";
-import { cacheGet, cacheSet, TTL, redis } from "../db/redis";
+import { query } from "../db/postgres";
+import { cacheGet, cacheSet, TTL } from "../db/redis";
 import { logger } from "../utils/logger";
 
 export const kohliRouter: IRouter = Router();
 
-const KOHLI_INTERNAL_ID  = "virat-kohli";
-const KOHLI_SEARCH_NAME  = "Virat Kohli";
-const SHRINE_CACHE_KEY   = "kohli:shrine:v2";
-const CRICDATA_ID_KEY    = "cricdata:id:virat-kohli";
+const KOHLI_INTERNAL_ID = "virat-kohli";
+const SHRINE_CACHE_KEY  = "kohli:shrine:v2";
+
+// ── Snapshot read ─────────────────────────────────────────────────────────────
+// Kohli's career rows live in player_career_stats, kept fresh by the refresher
+// worker (scraper primary → RapidAPI fallback). This route ONLY reads the
+// snapshot — it never triggers an external fetch, so it's instant and free.
+
+interface CareerRow {
+  format:   string;
+  matches:  number;
+  runs:     number;
+  avg:      number;
+  sr:       number;
+  hundreds: number;
+  fifties:  number;
+  highest:  string;
+}
+
+interface PlayerRow {
+  name:          string;
+  country:       string;
+  role:          string;
+  batting_style: string | null;
+}
+
+async function loadKohliSnapshot(): Promise<{ player: PlayerRow; career: CareerRow[] } | null> {
+  const players = await query<PlayerRow & { id: string }>(
+    `SELECT id, name, country, role, batting_style
+       FROM players
+      WHERE internal_id = $1
+      LIMIT 1`,
+    [KOHLI_INTERNAL_ID]
+  );
+  const player = players[0];
+  if (!player) return null;
+
+  const career = await query<CareerRow>(
+    `SELECT format, matches, runs, avg, sr, hundreds, fifties, highest
+       FROM player_career_stats
+      WHERE player_id = $1`,
+    [player.id]
+  );
+
+  return { player, career };
+}
 
 // ── Career arc helpers ────────────────────────────────────────────────────────
 
@@ -19,12 +61,12 @@ interface CareerArcPoint {
   t20:  number | null;
 }
 
-function buildKohliCareerArc(player: import("../services/cricdata").CricDataPlayer): CareerArcPoint[] {
-  const odiRow  = player.career.find((c) => c.format === "ODI");
-  const testRow = player.career.find((c) => c.format === "TEST");
-  const t20Row  = player.career.find((c) => c.format === "T20I");
+function buildKohliCareerArc(career: CareerRow[]): CareerArcPoint[] {
+  const odiRow  = career.find((c) => c.format === "ODI");
+  const testRow = career.find((c) => c.format === "TEST");
+  const t20Row  = career.find((c) => c.format === "T20I");
 
-  // Live values for 2024 — fall back to 2023 values if live data is 0
+  // Live values for 2024 — fall back to 2023 values if snapshot data is 0
   const liveOdiAvg  = odiRow?.avg  && odiRow.avg  > 0 ? odiRow.avg  : 95.2;
   const liveTestAvg = testRow?.avg && testRow.avg > 0 ? testRow.avg : 55.3;
   const liveT20Avg  = t20Row?.avg  && t20Row.avg  > 0 ? t20Row.avg  : 42.1;
@@ -60,8 +102,8 @@ interface LiveCareerStats {
   hs:       number;
 }
 
-function buildCurrentStats(player: import("../services/cricdata").CricDataPlayer): LiveCareerStats {
-  const odiRow = player.career.find((c) => c.format === "ODI");
+function buildCurrentStats(career: CareerRow[]): LiveCareerStats {
+  const odiRow = career.find((c) => c.format === "ODI");
   return {
     matches:  odiRow?.matches  ?? 0,
     runs:     odiRow?.runs     ?? 0,
@@ -73,26 +115,26 @@ function buildCurrentStats(player: import("../services/cricdata").CricDataPlayer
   };
 }
 
-interface Record {
+interface ShrineRecord {
   value:   string;
   label:   string;
   context: string;
 }
 
-function buildRecords(player: import("../services/cricdata").CricDataPlayer): Record[] {
+function buildRecords(career: CareerRow[]): ShrineRecord[] {
   return [
     {
-      value:   player.career.find((c) => c.format === "ODI")?.hundreds.toString() ?? "80",
+      value:   career.find((c) => c.format === "ODI")?.hundreds.toString() ?? "80",
       label:   "ODI Centuries",
       context: "Most centuries in ODI cricket",
     },
     {
-      value:   player.career.find((c) => c.format === "ODI")?.avg.toFixed(1) ?? "58.5",
+      value:   career.find((c) => c.format === "ODI")?.avg.toFixed(1) ?? "58.5",
       label:   "ODI Average",
       context: "Career ODI batting average",
     },
     {
-      value:   player.career.find((c) => c.format === "TEST")?.hundreds.toString() ?? "29",
+      value:   career.find((c) => c.format === "TEST")?.hundreds.toString() ?? "29",
       label:   "Test Centuries",
       context: "Test match centuries",
     },
@@ -106,63 +148,40 @@ kohliRouter.get("/", async (_req: Request, res: Response) => {
   const cached = await cacheGet(SHRINE_CACHE_KEY);
   if (cached) return res.json(cached);
 
-  // 2. Resolve CricData UUID for Kohli
-  let cricdataId: string | null = await cacheGet<string>(CRICDATA_ID_KEY);
-  if (!cricdataId) {
-    try {
-      const results = await searchCricDataPlayer(KOHLI_SEARCH_NAME);
-      const match = results[0];
-      if (match) {
-        cricdataId = match.id;
-        // Cache permanently — no TTL
-        await redis.set(CRICDATA_ID_KEY, cricdataId);
-      }
-    } catch (e: any) {
-      if (e instanceof CricDataBudgetExceededError) {
-        // No shrine data at all yet — return 429
-        return res.status(429).json({ error: "Daily API budget exceeded", budgetExceeded: true });
-      }
-      logger.error("[kohli] CricData search failed", { error: e.message });
-      return res.status(502).json({ error: "Failed to resolve player ID", detail: e.message });
-    }
-  }
-
-  if (!cricdataId) {
-    return res.status(404).json({ error: "Kohli not found in CricData" });
-  }
-
-  // 3. Fetch full player profile (1 API call)
+  // 2. Read the DB snapshot (no external calls)
   try {
-    const player = await getCricDataPlayer(cricdataId);
+    const snapshot = await loadKohliSnapshot();
 
-    // 4. Build shrine response
-    const careerArc    = buildKohliCareerArc(player);
-    const currentStats = buildCurrentStats(player);
-    const records      = buildRecords(player);
+    if (!snapshot) {
+      return res.status(404).json({ error: "Kohli not found in players table" });
+    }
 
+    if (snapshot.career.length === 0) {
+      // Stats not synced yet (scraper hasn't run) — frontend falls back to
+      // its bundled mock data, so the page still renders.
+      return res.status(503).json({ error: "Kohli stats pending sync", statsPending: true });
+    }
+
+    const { player, career } = snapshot;
+
+    // 3. Build shrine response
     const shrine = {
       playerId:     KOHLI_INTERNAL_ID,
       name:         player.name,
       country:      player.country,
       role:         player.role,
-      battingStyle: player.battingStyle,
-      careerArc,
-      currentStats,
-      records,
-      lastUpdated: new Date().toISOString(),
+      battingStyle: player.batting_style ?? "Right-hand bat",
+      careerArc:    buildKohliCareerArc(career),
+      currentStats: buildCurrentStats(career),
+      records:      buildRecords(career),
+      lastUpdated:  new Date().toISOString(),
     };
 
-    // 5. Cache and return
+    // 4. Cache and return
     await cacheSet(SHRINE_CACHE_KEY, shrine, TTL.KOHLI_SHRINE);
     return res.json(shrine);
   } catch (e: any) {
-    if (e instanceof CricDataBudgetExceededError) {
-      // Return stale cached data if it exists, otherwise 429
-      const stale = await cacheGet(SHRINE_CACHE_KEY);
-      if (stale) return res.json(stale);
-      return res.status(429).json({ error: "Daily API budget exceeded", budgetExceeded: true });
-    }
-    logger.error("[kohli] getCricDataPlayer failed", { cricdataId, error: e.message });
-    return res.status(502).json({ error: "Failed to fetch Kohli stats", detail: e.message });
+    logger.error("[kohli] Snapshot read failed", { error: e.message });
+    return res.status(502).json({ error: "Failed to load Kohli stats", detail: e.message });
   }
 });

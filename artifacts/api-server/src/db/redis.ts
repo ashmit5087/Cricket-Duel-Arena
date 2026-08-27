@@ -9,10 +9,9 @@ export const TTL = {
   PLAYER_PROFILE:  86400,   // 24h
   CAREER_STATS:    86400,   // 24h
   BATTLE_RESULT:   86400,   // 24h — one API call per unique battle per day
-  KOHLI_SHRINE:    86400,   // 24h — refreshed once per day
+  KOHLI_SHRINE:    3600,     // 1h — short enough to pick up refresher updates quickly
   CONSTELLATION:   86400,   // 24h
   SEARCH:          300,     // 5 min
-  CRICDATA_ID_MAP: 0,       // permanent
   MOMENTUM:        30,
 };
 
@@ -132,7 +131,7 @@ export async function redisHealthCheck(): Promise<boolean> {
   }
 }
 
-// ── Budget helpers (used by CricData rate-limiter) ────────────────────────────
+// ── Budget helpers (used by the RapidAPI quota counter) ──────────────────────────
 
 /**
  * Atomically increments a daily budget counter.
@@ -159,16 +158,8 @@ export async function budgetIncr(key: string, _limit: number): Promise<number> {
   return current;
 }
 
-export async function getBudgetCount(key: string): Promise<number> {
-  if (redisAvailable) {
-    const raw = await redisClient.get(key);
-    return raw ? parseInt(raw, 10) : 0;
-  }
-  return mem.get<number>(key) ?? 0;
-}
-
-// ── Exported client for code that needs raw access ────────────────────────────
-// (e.g. permanent CricData ID mappings, socket.ts pub/sub)
+// ── Exported client for code that needs raw access ────────────────────────
+// (e.g. socket.ts pub/sub)
 
 export const redis = {
   set: async (key: string, value: string) => {

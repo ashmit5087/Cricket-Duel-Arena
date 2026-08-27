@@ -20,6 +20,7 @@ import time
 from scraper import load_or_fetch_all
 from features import build_all_vectors, FEATURE_COLS
 from pipeline import pipeline, ARCHETYPE_LABELS
+from scraper.router import router as scraper_router
 
 # ─── Lifespan (replaces deprecated on_event) ──────────────────────────────────
 
@@ -65,6 +66,13 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# ── Scraper router (replaces RapidAPI for career stats) ─────────────────────
+# Mounted under /scrape. See scraper/router.py for the endpoint list.
+# This router is the source-of-truth for player career stats, used by
+# api-server's refresher worker (every 12h) and the frontend Hero ticker.
+app.include_router(scraper_router)
 
 
 def _check_ready():

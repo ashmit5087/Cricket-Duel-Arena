@@ -19,7 +19,8 @@ import { battleRouter } from "./routes/battle";
 import { engagementRouter } from "./routes/engagement";
 import { kohliRouter } from "./routes/kohli";
 import { quizRouter } from "./routes/quiz";
-import { getBudgetStatus } from "./services/cricdata";
+import { scrapeRouter } from "./routes/scrape";
+import { getQuotaStatus } from "./services/cricbuzz";
 
 // ── App + HTTP server (Socket.io requires raw http.Server) ────────────────────
 
@@ -69,35 +70,11 @@ app.use("/api/battle",     battleRouter);
 app.use("/api/engagement", engagementRouter);
 app.use("/api/kohli",      kohliRouter);
 app.use("/api/quiz",       quizRouter);
+app.use("/api/scrape",     scrapeRouter);
 
-// ── Debug: dump raw Cricbuzz response for one player. Used to design the
-//    career-stats parser. Costs 3 credits per call. REMOVE after fix lands.
-app.get("/api/debug/raw-stats", async (req, res) => {
-  const cbId = String(req.query.cbId ?? "253802");
-  try {
-    const headers = {
-      "x-rapidapi-key":  process.env.RAPIDAPI_KEY ?? "",
-      "x-rapidapi-host": "cricbuzz-cricket.p.rapidapi.com",
-      "Accept":          "application/json",
-    };
-    const fetchOne = async (path: string) => {
-      const r = await fetch(`https://cricbuzz-cricket.p.rapidapi.com${path}`, { headers });
-      return { path, status: r.status, body: await r.text() };
-    };
-    const [info, batting, bowling] = await Promise.all([
-      fetchOne(`/stats/v1/player/${cbId}`),
-      fetchOne(`/stats/v1/player/${cbId}/batting`),
-      fetchOne(`/stats/v1/player/${cbId}/bowling`),
-    ]);
-    res.json({ cbId, info, batting, bowling });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
-// Budget status — never costs a CricData request
-app.get("/api/budget", async (_req, res) => {
-  try { res.json(await getBudgetStatus()); }
+// RapidAPI quota status — reads the local counter, never costs a request
+app.get("/api/quota", async (_req, res) => {
+  try { res.json(await getQuotaStatus()); }
   catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
@@ -133,7 +110,7 @@ app.get("/health", async (_req, res) => {
       postgres:    pg    ? "✅ connected"  : "⚠️  skipped (battle history disabled)",
       redis:       redis ? "✅ connected"  : "❌ disconnected",
       ml:          mlOk  ? "✅ connected"  : "⚠️  unavailable",
-      cricdata:    process.env.CRICDATA_API_KEY ? "✅ key set" : "❌ CRICDATA_API_KEY missing",
+      rapidapi:    process.env.RAPIDAPI_KEY ? "✅ key set" : "❌ RAPIDAPI_KEY missing",
       gemini:      process.env.GEMINI_API_KEY ? "✅ key set" : "⚠️  not set",
       websocket:   "✅ running",
     },
@@ -174,7 +151,7 @@ app.use((req, res) => {
       "GET  /api/engagement/rankings?format=overall",
       "GET  /api/engagement/streaks/:internalId",
       "GET  /api/engagement/streaks/active",
-      "GET  /api/debug/raw-stats?cbId=253802",
+      "GET  /api/quota",
     ],
   });
 });
@@ -204,12 +181,6 @@ async function boot() {
   await new Promise((r) => setTimeout(r, 1500));
   const redisOk = await redisHealthCheck();
   logger.info(redisOk ? "[boot] ✅ Redis connected" : "[boot] ⚠️  Redis unavailable — using in-memory fallback (run: docker compose up -d redis)");
-
-  if (!process.env.CRICDATA_API_KEY) {
-    logger.warn("[boot] ⚠️  CRICDATA_API_KEY not set — live player data will fail");
-  } else {
-    logger.info("[boot] ✅ CricData API key set");
-  }
 
   if (!process.env.GEMINI_API_KEY) {
     logger.warn("[boot] ⚠️  GEMINI_API_KEY not set — battle narratives will use stat-based fallback");

@@ -18,7 +18,7 @@
 
 import "dotenv/config";
 import { pool, query } from "./postgres";
-import { getPlayerStats, QuotaExhaustedError, getQuotaRemaining } from "../services/cricbuzz";
+import { getPlayerStats, QuotaExhaustedError, QuotaBlockedError, getQuotaRemaining } from "../services/cricbuzz";
 import { upsertCareerStats } from "../lib/snapshot";
 import { cacheGet, cacheSet } from "./redis";
 import { logger } from "../utils/logger";
@@ -79,7 +79,9 @@ async function bootstrap(): Promise<void> {
       done++;
       logger.info(`[bootstrap] ✅ ${player.name} (${done}/${pending.length})`, { formats: rows });
     } catch (e: any) {
-      if (e instanceof QuotaExhaustedError) {
+      if (e instanceof QuotaExhaustedError || e instanceof QuotaBlockedError) {
+        // Quota errors are NOT player failures — don't mark this ID as
+        // failed, just stop. Remaining players sync on a later run.
         logger.warn(
           `[bootstrap] Monthly quota reached after ${done} player(s) — stopping. ` +
           `Remaining players will sync on a later run (idempotent).`

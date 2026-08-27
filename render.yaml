@@ -44,8 +44,6 @@ services:
     healthCheckPath: /health
     envVars:
       # ── Secrets — paste these in the Render dashboard ──
-      - key: CRICDATA_API_KEY
-        sync: false
       - key: GEMINI_API_KEY
         sync: false
       - key: QUIZ_SIGNING_SECRET
@@ -88,8 +86,6 @@ services:
       # ── App config ──
       - key: NODE_ENV
         value: production
-      - key: CRICDATA_DAILY_LIMIT
-        value: "100"
       - key: KEEP_ALIVE_ENABLED
         value: "true"
 

@@ -19,6 +19,11 @@ export class QuotaExhaustedError extends Error {
   constructor() { super("Cricbuzz monthly quota exhausted locally"); }
 }
 
+/** RapidAPI told us the monthly plan quota is gone (429), or we self-blocked. */
+export class QuotaBlockedError extends Error {
+  constructor(message: string) { super(message); }
+}
+
 /**
  * Atomically spend one credit. Returns false if the monthly budget is gone.
  * Key rolls over by calendar month; in-memory fallback resets on restart.
@@ -40,6 +45,13 @@ export async function getQuotaRemaining(): Promise<number> {
   const monthKey = `${MONTHLY_KEY_PREFIX}${new Date().toISOString().slice(0, 7)}`;
   const used = parseInt((await redis.get(monthKey)) ?? "0", 10);
   return Math.max(0, MONTHLY_QUOTA_LIMIT - used);
+}
+
+/** Local view of the monthly RapidAPI budget (backs GET /api/quota). */
+export async function getQuotaStatus(): Promise<{ limit: number; used: number; remaining: number }> {
+  const monthKey = `${MONTHLY_KEY_PREFIX}${new Date().toISOString().slice(0, 7)}`;
+  const used = parseInt((await redis.get(monthKey)) ?? "0", 10);
+  return { limit: MONTHLY_QUOTA_LIMIT, used, remaining: Math.max(0, MONTHLY_QUOTA_LIMIT - used) };
 }
 
 const HEADERS = {
@@ -101,14 +113,16 @@ async function rateLimitedFetch(url: string, attempt = 0): Promise<any> {
     throw new Error("RAPIDAPI_KEY not set in environment");
   }
 
-  if (!(await spendCredit())) {
-    throw new QuotaExhaustedError();
-  }
-
+  // Check the local block BEFORE spending a credit, so blocked calls
+  // don't inflate the monthly counter.
   if (Date.now() < quotaBlockedUntil) {
-    throw new Error(
+    throw new QuotaBlockedError(
       `Cricbuzz API 429: RapidAPI monthly quota exceeded; blocked locally until ${new Date(quotaBlockedUntil).toISOString()}`
     );
+  }
+
+  if (!(await spendCredit())) {
+    throw new QuotaExhaustedError();
   }
 
   await throttleRequest();
@@ -126,7 +140,7 @@ async function rateLimitedFetch(url: string, attempt = 0): Promise<any> {
         endpoint,
         blockedUntil: new Date(quotaBlockedUntil).toISOString(),
       });
-      throw new Error(`Cricbuzz API 429: ${message}`);
+      throw new QuotaBlockedError(`Cricbuzz API 429: ${message}`);
     }
 
     if (attempt >= MAX_RETRIES) {
@@ -342,6 +356,13 @@ export async function getPlayerStats(cricbuzzPlayerId: string): Promise<Cricbuzz
   const playerInfo = info.status === "fulfilled" ? info.value : {};
   const battingData = batting.status === "fulfilled" ? batting.value : {};
   const bowlingData = bowling.status === "fulfilled" ? bowling.value : {};
+
+  // If EVERY call failed (quota block, 429, network), propagate the error.
+  // Returning an empty career here would look identical to "no data" and
+  // would wrongly mark the player as failed for 7 days in bootstrap.
+  if (info.status === "rejected" && batting.status === "rejected" && bowling.status === "rejected") {
+    throw batting.reason ?? new Error("All Cricbuzz stat calls failed");
+  }
 
   // Parse career rows
   const FORMAT_MAP: Record<string, string> = {
