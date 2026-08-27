@@ -1,11 +1,16 @@
-# ml/scraper.py
-"""
-Fetches player career stats from ESPN Cricinfo for the ML pipeline.
-Saves to ml/data/raw_profiles.json — consumed by features.py.
-
-Run once at startup if no cached data exists.
-Run weekly via cron to keep data fresh.
-"""
+# scraper/cricinfo_loader.py
+# ─────────────────────────────────────────────────────────────────────────────
+# ESPN Cricinfo loader — provides raw_profiles.json for the ML pipeline
+# (features.py → pipeline.py). Unrelated to the Cricbuzz scraper that
+# powers /scrape/* endpoints.
+#
+# This used to live at scraper.py in the ml/ root, but that filename
+# collided with the new scraper/ package directory — Python's import
+# resolver prefers packages over same-named modules, so the new
+# scraper/__init__.py was shadowing this file. Moving the loader inside
+# the package fixes the conflict and consolidates "scraper" into one
+# namespace.
+# ─────────────────────────────────────────────────────────────────────────────
 
 import requests
 import json
@@ -15,7 +20,7 @@ from typing import Dict, Any, Optional
 
 from features import PLAYER_BASE
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
+DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
 os.makedirs(DATA_DIR, exist_ok=True)
 
 RAW_PROFILES_PATH = os.path.join(DATA_DIR, "raw_profiles.json")
@@ -107,10 +112,10 @@ def load_or_fetch_all(force_refresh: bool = False) -> Dict[str, dict]:
     if os.path.exists(RAW_PROFILES_PATH) and not force_refresh:
         with open(RAW_PROFILES_PATH) as f:
             profiles = json.load(f)
-        print(f"[scraper] Loaded {len(profiles)} cached profiles from disk")
+        print(f"[cricinfo_loader] Loaded {len(profiles)} cached profiles from disk")
         return profiles
 
-    print(f"[scraper] Fetching {len(PLAYER_BASE)} players from Cricinfo...")
+    print(f"[cricinfo_loader] Fetching {len(PLAYER_BASE)} players from Cricinfo...")
     profiles = {}
 
     for i, cric_id in enumerate(PLAYER_BASE.keys()):
@@ -122,7 +127,7 @@ def load_or_fetch_all(force_refresh: bool = False) -> Dict[str, dict]:
             print(f"  [progress] {i+1}/{len(PLAYER_BASE)} saved")
 
     _save(profiles)
-    print(f"[scraper] Complete. {len(profiles)} profiles saved.")
+    print(f"[cricinfo_loader] Complete. {len(profiles)} profiles saved.")
     return profiles
 
 
