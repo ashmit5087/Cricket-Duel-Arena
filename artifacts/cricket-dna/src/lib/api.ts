@@ -252,6 +252,8 @@ export const fetchKohliShrine = () =>
     careerArc: { year: number; test: number | null; odi: number | null; t20: number | null }[];
     records: { value: string; label: string; context: string }[];
     currentStats: LiveCareerStats;
+    lastUpdated?: string;
+    statsSource?: string;
   }>("/api/kohli");
 
 // ─── Quiz ─────────────────────────────────────────────────────────────────────
@@ -317,3 +319,25 @@ export interface AlgorithmInfo {
 /** Fetch available ML algorithms (proxied through Express, ML_URL stays server-side). */
 export const fetchAlgorithms = () =>
   apiFetch<AlgorithmInfo[]>("/api/algorithms");
+
+// ─── Live ticker / live data (Hero page) ─────────────────────────────────────
+
+export interface LiveMatch {
+  matchId: string;
+  match: string;
+  slug: string;
+  url: string;
+}
+
+/** Currently live Cricbuzz matches. Scraped from the mobile API every ~30s. */
+export const fetchLiveMatches = () =>
+  apiFetch<{ count: number; matches: LiveMatch[] }>("/api/scrape/live-matches");
+
+/** Live Kohli shrine snapshot — includes lastUpdated for the "Updated Nh ago" badge. */
+export interface KohliShrineLive {
+  careerArc: { year: number; test: number | null; odi: number | null; t20: number | null }[];
+  records: { value: string; label: string; context: string }[];
+  currentStats: LiveCareerStats;
+  lastUpdated?: string;
+  statsSource?: string;
+}

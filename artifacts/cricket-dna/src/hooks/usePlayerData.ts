@@ -28,9 +28,12 @@ import {
   fetchBattle,
   fetchStatementMoments,
   fetchKohliShrine,
+  fetchLiveMatches,
   type LivePlayerProfile,
   type LiveCareerStats,
   type SearchResult,
+  type LiveMatch,
+  type KohliShrineLive,
   fetchQuiz,
   submitQuiz,
   fetchQuizLeaderboard,
@@ -365,6 +368,52 @@ export function useKohliShrine() {
 }
 
 // ─── Budget status ───────────────────────────────────────────────────────────
+
+
+
+// ─── Live ticker (Hero page) ───────────────────────────────────────────────────
+
+/**
+ * Live matches from Cricbuzz, refreshed every 30s.
+ * Use on the Hero page to show a "Live Now" ticker that pops up when
+ * matches are in progress. Returns an empty array when no matches are live
+ * so consumers can render a "No live matches" placeholder without
+ * special-casing the loading state.
+ */
+export function useLiveTicker() {
+  return useQuery({
+    queryKey: ["scrape", "live-matches"],
+    queryFn: fetchLiveMatches,
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: false, // pause when tab is hidden
+    staleTime: 0,
+    gcTime: 1000 * 60 * 2,
+    retry: 1,
+    placeholderData: { count: 0, matches: [] as LiveMatch[] },
+  });
+}
+
+// ─── Live Kohli shrine (Kohli page) ──────────────────────────────────────────
+
+/**
+ * Kohli shrine with a short refetch window so a fresh scrape (or RapidAPI
+ * fallback) lands in the React Query cache within ~60s. Use alongside
+ * `useKohliShrine()` if you want both shapes.
+ */
+export function useKohliShrineLive() {
+  return useQuery({
+    queryKey: ["kohli", "shrine", "live"],
+    queryFn: fetchKohliShrine,
+    refetchInterval: 60_000,
+    refetchIntervalInBackground: false,
+    staleTime: 1000 * 30,
+    placeholderData: {
+      careerArc: KOHLI_CAREER,
+      records: [],
+      currentStats: {} as LiveCareerStats,
+    } as KohliShrineLive,
+  });
+}
 
 
 
