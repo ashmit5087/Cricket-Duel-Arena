@@ -96,7 +96,7 @@ export async function loadPlayerSnapshot(internalIdOrCricbuzzId: string): Promis
 
   const statsRows = await query(
     `SELECT format, matches, innings, runs, avg, sr, hundreds, fifties,
-            highest, wickets, economy, best_bowl
+            highest, wickets, economy, best_bowl AS "bestBowl"
        FROM player_career_stats
       WHERE player_id = $1`,
     [row.id]

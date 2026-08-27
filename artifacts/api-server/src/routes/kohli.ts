@@ -64,7 +64,9 @@ async function loadKohliSnapshot(): Promise<
 
   const career = await query<CareerRow>(
     `SELECT format, matches, innings, runs, avg, sr, hundreds, fifties,
-            highest, last_synced, stats_source
+            highest,
+            last_synced  AS "lastSynced",
+            stats_source AS "statsSource"
        FROM player_career_stats
       WHERE player_id = $1`,
     [player.id]
