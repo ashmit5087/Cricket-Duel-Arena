@@ -26,3 +26,4 @@ export function SmoothScrollProvider({ children }: { children: ReactNode }) {
 }
 
 export const useLenis = () => useContext(LenisContext);
+
