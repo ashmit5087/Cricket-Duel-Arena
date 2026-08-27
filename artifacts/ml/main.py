@@ -163,6 +163,7 @@ def get_cluster(player_id: str):
         "isOutlier":    bool(row.get("is_outlier", False)),
         "centroid":     [round(v, 1) for v in centroid],
         "playerVector": [round(float(row[c]), 1) for c in FEATURE_COLS[:8]],
+        "dnaScore":     round(float(row["dim_19"]), 1),
     }
 
 

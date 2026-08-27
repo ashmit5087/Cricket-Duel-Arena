@@ -21,6 +21,7 @@ import { kohliRouter } from "./routes/kohli";
 import { quizRouter } from "./routes/quiz";
 import { scrapeRouter } from "./routes/scrape";
 import { getQuotaStatus } from "./services/cricbuzz";
+import { PLAYER_ROSTER } from "./models/player";
 
 // ── App + HTTP server (Socket.io requires raw http.Server) ────────────────────
 
@@ -95,11 +96,47 @@ app.get("/api/quota", async (_req, res) => {
 // ML placeholders (real data when Python service is running)
 app.get("/api/constellation", (_req, res) => res.json([]));
 app.get("/api/clusters",      (_req, res) => res.json([]));
-app.get("/api/knn",           (_req, res) => res.json({ player: null, twins: [] }));
 app.get("/api/search",        async (req, res) => {
   // proxy to the players search handler
   req.url = `/search${req.url.includes("?") ? req.url.slice(req.url.indexOf("?") - 1) : ""}`;
   playersRouter(req, res, () => res.status(404).json({ error: "Not found" }));
+});
+
+// ML proxy routes — the frontend talks to these instead of going direct to the
+// Python service. Path params carry the internalId (e.g. "virat-kohli"); we
+// resolve to the ESPN Cricinfo ID the ML pipeline is keyed on, and 503/502
+// gracefully if the ML service is asleep/unreachable.
+const ML_URL = process.env.ML_URL ?? "http://localhost:8000";
+
+function resolveEspnId(internalId: string): string | null {
+  const entry = PLAYER_ROSTER.find((p) => p.internalId === internalId);
+  return entry?.espnId ?? null;
+}
+
+async function proxyToML(path: string, res: any) {
+  try {
+    const r = await fetch(`${ML_URL}${path}`, { signal: AbortSignal.timeout(4000) });
+    const body = await r.json();
+    res.status(r.ok ? 200 : r.status).json(body);
+  } catch (e: any) {
+    res.status(503).json({ error: "ML service unavailable", detail: e?.message ?? "fetch failed" });
+  }
+}
+
+// GET /api/cluster/:internalId — archetype + dnaScore for a player
+app.get("/api/cluster/:internalId", async (req, res) => {
+  const espnId = resolveEspnId(req.params.internalId);
+  if (!espnId) return res.status(404).json({ error: `Player '${req.params.internalId}' not in roster` });
+  await proxyToML(`/cluster/${espnId}`, res);
+});
+
+// GET /api/knn?player=:internalId&k=5 — DNA twins for a player
+app.get("/api/knn", async (req, res) => {
+  const internalId = String(req.query.player ?? "");
+  const k = Math.min(20, Math.max(1, parseInt(String(req.query.k ?? "5"), 10) || 5));
+  const espnId = resolveEspnId(internalId);
+  if (!espnId) return res.status(404).json({ error: `Player '${internalId}' not in roster` });
+  await proxyToML(`/knn/${espnId}?k=${k}`, res);
 });
 
 // ── Health check ──────────────────────────────────────────────────────────────

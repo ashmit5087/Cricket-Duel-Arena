@@ -190,7 +190,7 @@ export const fetchKNNTwins = (playerId: string, k = 5) =>
  * Archetype assignment for a player — from the K-Means model.
  */
 export const fetchArchetype = (playerId: string) =>
-  apiFetch<{ archetypeId: string; archetype: string; centroid: number[] }>(
+  apiFetch<{ archetypeId: string; archetype: string; centroid: number[]; dnaScore?: number }>(
     `/api/cluster/${playerId}`
   );
 

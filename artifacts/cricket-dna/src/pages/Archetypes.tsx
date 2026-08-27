@@ -7,7 +7,7 @@ import {
 } from "recharts";
 import { ARCHETYPES, PLAYERS, RADAR_AXES } from "@/data/mockData";
 import { PlayerAvatar } from "@/components/ui/PlayerAvatar";
-import { useClusters } from "@/hooks/usePlayerData";
+import { useClusters, useKNNTwins } from "@/hooks/usePlayerData";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -706,6 +706,7 @@ function DhoniWildcard() {
 }
 
 // ─── Section 5 — Viral Findings ───────────────────────────────────────────────
+// ─── Section 5 — Viral Findings ───────────────────────────────────────────────────────────────
 
 const VIRAL_PAIRS = [
   {
@@ -738,6 +739,69 @@ const VIRAL_PAIRS = [
   },
 ];
 
+// One card in the Viral Findings grid. Resolves the live similarity by
+// asking the KNN endpoint for p1's top twins and looking up p2 — if the
+// partner is in the returned list, the live similarity is used; otherwise
+// the hardcoded value from VIRAL_PAIRS stands in.
+function ViralPairCard({
+  pair,
+  index,
+  inView,
+}: {
+  pair: typeof VIRAL_PAIRS[number];
+  index: number;
+  inView: boolean;
+}) {
+  const p1 = PLAYERS.find((p) => p.id === pair.p1);
+  const p2 = PLAYERS.find((p) => p.id === pair.p2);
+  // Live KNN for p1. The hook uses p1's cricInfoId as the enabled-gate.
+  const { data: knn } = useKNNTwins(pair.p1, p1?.cricInfoId);
+  const liveTwin = knn?.twins?.find((t) => t.id === pair.p2);
+  const similarity = liveTwin?.similarity ?? pair.similarity;
+
+  if (!p1 || !p2) return null;
+
+  return (
+    <motion.div
+      className="border p-6"
+      style={{
+        borderColor: `${pair.color}18`,
+        background: "#0b0b0b",
+      }}
+      initial={{ opacity: 0, y: 20 }}
+      animate={inView ? { opacity: 1, y: 0 } : {}}
+      transition={{ delay: 0.15 * index, duration: 0.6 }}
+    >
+      {/* Players row */}
+      <div className="flex items-center gap-4 mb-5">
+        <PlayerAvatar player={p1} size={48} imageSize="100" showFlag={true} showRing={false} animate={false} />
+        <div className="flex flex-col items-center gap-1 flex-1">
+          <div
+            className="text-xs font-mono font-bold"
+            style={{ color: pair.color }}
+          >
+            {similarity}%
+          </div>
+          <div className="w-full h-px" style={{ background: `linear-gradient(to right, transparent, ${pair.color}60, transparent)` }} />
+          <div className="text-[9px] text-[#333] uppercase tracking-wider">DNA match</div>
+        </div>
+        <PlayerAvatar player={p2} size={48} imageSize="100" showFlag={true} showRing={false} animate={false} />
+      </div>
+
+      {/* Names */}
+      <div className="flex justify-between mb-4">
+        <span className="text-xs text-[#888]">{p1.name}</span>
+        <span className="text-xs text-[#888]">{p2.name}</span>
+      </div>
+
+      {/* Finding text */}
+      <p className="text-[#555] text-xs leading-relaxed border-t border-white/4 pt-4">
+        {pair.finding}
+      </p>
+    </motion.div>
+  );
+}
+
 function ViralFindings() {
   const ref = useRef<HTMLElement>(null);
   const inView = useInView(ref, { once: true, margin: "-80px" });
@@ -763,52 +827,9 @@ function ViralFindings() {
         </motion.p>
 
         <div className="grid md:grid-cols-2 gap-5">
-          {VIRAL_PAIRS.map((pair, i) => {
-            const p1 = PLAYERS.find((p) => p.id === pair.p1);
-            const p2 = PLAYERS.find((p) => p.id === pair.p2);
-            if (!p1 || !p2) return null;
-
-            return (
-              <motion.div
-                key={i}
-                className="border p-6"
-                style={{
-                  borderColor: `${pair.color}18`,
-                  background: "#0b0b0b",
-                }}
-                initial={{ opacity: 0, y: 20 }}
-                animate={inView ? { opacity: 1, y: 0 } : {}}
-                transition={{ delay: 0.15 * i, duration: 0.6 }}
-              >
-                {/* Players row */}
-                <div className="flex items-center gap-4 mb-5">
-                  <PlayerAvatar player={p1} size={48} imageSize="100" showFlag={true} showRing={false} animate={false} />
-                  <div className="flex flex-col items-center gap-1 flex-1">
-                    <div
-                      className="text-xs font-mono font-bold"
-                      style={{ color: pair.color }}
-                    >
-                      {pair.similarity}%
-                    </div>
-                    <div className="w-full h-px" style={{ background: `linear-gradient(to right, transparent, ${pair.color}60, transparent)` }} />
-                    <div className="text-[9px] text-[#333] uppercase tracking-wider">DNA match</div>
-                  </div>
-                  <PlayerAvatar player={p2} size={48} imageSize="100" showFlag={true} showRing={false} animate={false} />
-                </div>
-
-                {/* Names */}
-                <div className="flex justify-between mb-4">
-                  <span className="text-xs text-[#888]">{p1.name}</span>
-                  <span className="text-xs text-[#888]">{p2.name}</span>
-                </div>
-
-                {/* Finding text */}
-                <p className="text-[#555] text-xs leading-relaxed border-t border-white/4 pt-4">
-                  {pair.finding}
-                </p>
-              </motion.div>
-            );
-          })}
+          {VIRAL_PAIRS.map((pair, i) => (
+            <ViralPairCard key={i} pair={pair} index={i} inView={inView} />
+          ))}
         </div>
       </div>
     </section>

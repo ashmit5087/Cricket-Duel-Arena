@@ -29,6 +29,7 @@ import {
   fetchStatementMoments,
   fetchKohliShrine,
   fetchLiveMatches,
+  fetchArchetype,
   type LivePlayerProfile,
   type LiveCareerStats,
   type SearchResult,
@@ -249,6 +250,43 @@ export function useKNNTwins(
     queryKey: ["knn", playerId],
     queryFn: () => fetchKNNTwins(playerId!, 5),
     enabled: !!playerId && !!cricInfoId,
+    staleTime: STALE.ml,
+    placeholderData: mockFallback,
+  });
+}
+
+// ─── Archetype / DNA score ───────────────────────────────────────────────────
+
+/**
+ * Live archetype assignment + composite DNA score for a player.
+ * The DNA score is the headline number rendered in the hero pill on the
+ * Kohli page and in other "DNA Score" displays across the site.
+ *
+ * Falls back to the mock player's dnaScore while the ML service responds,
+ * so the UI never shows an empty state.
+ *
+ * @param internalId  Player id from mockData e.g. "virat-kohli"
+ * @param cricInfoId  ESPN Cricinfo ID for the enabled-gate
+ */
+export function useArchetype(
+  internalId: string | undefined,
+  cricInfoId: string | undefined
+) {
+  const mockPlayer = PLAYERS.find((p) => p.id === internalId);
+  const mockFallback = useMemo(
+    () => ({
+      archetypeId: mockPlayer?.archetypeId ?? "A",
+      archetype:   mockPlayer?.archetype    ?? "",
+      centroid:    [] as number[],
+      dnaScore:    mockPlayer?.dnaScore     ?? 70,
+    }),
+    [internalId]
+  );
+
+  return useQuery({
+    queryKey: ["archetype", internalId],
+    queryFn: () => fetchArchetype(internalId!),
+    enabled: !!internalId && !!cricInfoId,
     staleTime: STALE.ml,
     placeholderData: mockFallback,
   });

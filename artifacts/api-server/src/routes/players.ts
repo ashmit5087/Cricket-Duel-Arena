@@ -79,6 +79,11 @@ async function buildNormalisedPlayer(
 
   // Fetch ML metrics from Python service
   const ML_URL = process.env.ML_URL ?? "http://localhost:8000";
+  // The ML pipeline's player_index is keyed on ESPN Cricinfo IDs,
+  // not Cricbuzz legacy IDs. Fall back to cricbuzzPlayerId if espnId
+  // is unmapped (e.g. Suryakumar Yadav, Travis Head) — those calls
+  // will 404, but the default values below keep the page rendering.
+  const mlId = roster.espnId ?? roster.cricbuzzPlayerId;
   let dnaScore    = 70;
   let radarValues = [70, 70, 70, 70, 70, 70, 70, 70];
   let auraScore   = 50;
@@ -86,8 +91,8 @@ async function buildNormalisedPlayer(
 
   try {
     const [mlCluster, mlElo] = await Promise.allSettled([
-      fetch(`${ML_URL}/cluster/${roster.cricbuzzPlayerId}`).then((r) => r.json() as Promise<{ dnaScore?: number; playerVector?: number[] }>),
-      fetch(`${ML_URL}/elo/${roster.cricbuzzPlayerId}`).then((r) => r.json() as Promise<{ rating?: number }>),
+      fetch(`${ML_URL}/cluster/${mlId}`).then((r) => r.json() as Promise<{ dnaScore?: number; playerVector?: number[] }>),
+      fetch(`${ML_URL}/elo/${mlId}`).then((r) => r.json() as Promise<{ rating?: number }>),
     ]);
     if (mlCluster.status === "fulfilled") {
       dnaScore    = mlCluster.value?.dnaScore    ?? dnaScore;

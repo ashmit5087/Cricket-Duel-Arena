@@ -5,7 +5,7 @@ import { motion, useInView, animate, AnimatePresence } from "framer-motion";
 import { VideoBackground } from "@/components/ui/VideoBackground";
 import { RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, ReferenceArea, Legend } from "recharts";
 import { KOHLI_CAREER, KOHLI_2022_KNOCK, PLAYERS, RADAR_AXES } from "@/data/mockData";
-import { useKohliShrine } from "@/hooks/usePlayerData";
+import { useKohliShrine, useArchetype } from "@/hooks/usePlayerData";
 import type { KohliShrineLive } from "@/lib/api";
 import DriftWall from "@/components/ui/DriftWall";
 import ScrollExpand from "@/components/ui/ScrollExpand";
@@ -37,10 +37,11 @@ function CountUpStat({ value, suffix = "", prefix = "" }: { value: number; suffi
 function HeroSection({ shrineData }: { shrineData?: KohliShrineLive }) {
   const liveCenturies = shrineData?.currentStats?.hundreds;
   const liveODIAvg    = shrineData?.currentStats?.avg;
-  // DNA score isn't part of the shrine payload — fall back to the mock so
-  // the third pill still renders something sensible while the live data loads.
-  const kohli = PLAYERS.find((p) => p.id === "virat-kohli");
-  const dnaScore = kohli?.dnaScore ?? 99;
+  // DNA score comes from the live ML cluster endpoint (/api/cluster/virat-kohli).
+  // The hook falls back to the mock 99 in placeholderData, so the pill still
+  // renders immediately on first paint and silently upgrades to the real value.
+  const { data: archetype } = useArchetype("virat-kohli", "253802");
+  const dnaScore = archetype?.dnaScore ?? 99;
 
   const statPills = [
     { v: liveCenturies != null ? String(liveCenturies) : "—", l: "ODI Centuries" },
