@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { motion, useInView, animate, AnimatePresence } from "framer-motion";
+
 import { VideoBackground } from "@/components/ui/VideoBackground";
 import { RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, ReferenceArea, Legend } from "recharts";
 import { KOHLI_CAREER, KOHLI_2022_KNOCK, PLAYERS, RADAR_AXES } from "@/data/mockData";
 import { useKohliShrine } from "@/hooks/usePlayerData";
+import type { KohliShrineLive } from "@/lib/api";
 import DriftWall from "@/components/ui/DriftWall";
 import ScrollExpand from "@/components/ui/ScrollExpand";
 import StrokeText from "@/components/ui/StrokeText";
@@ -32,7 +34,20 @@ function CountUpStat({ value, suffix = "", prefix = "" }: { value: number; suffi
   return <span ref={ref}>{prefix}0{suffix}</span>;
 }
 
-function HeroSection() {
+function HeroSection({ shrineData }: { shrineData?: KohliShrineLive }) {
+  const liveCenturies = shrineData?.currentStats?.hundreds;
+  const liveODIAvg    = shrineData?.currentStats?.avg;
+  // DNA score isn't part of the shrine payload — fall back to the mock so
+  // the third pill still renders something sensible while the live data loads.
+  const kohli = PLAYERS.find((p) => p.id === "virat-kohli");
+  const dnaScore = kohli?.dnaScore ?? 99;
+
+  const statPills = [
+    { v: liveCenturies != null ? String(liveCenturies) : "—", l: "ODI Centuries" },
+    { v: liveODIAvg    != null ? liveODIAvg.toFixed(1)  : "—", l: "ODI Average" },
+    { v: String(dnaScore), l: "DNA Score" },
+  ];
+
   return (
     <section className="relative min-h-screen overflow-hidden" data-testid="kohli-hero">
       {/* GIF — full bleed, barely touched */}
@@ -152,11 +167,7 @@ function HeroSection() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 1.35, duration: 0.7, ease: "easeOut" }}
         >
-          {[
-            { v: "80", l: "Centuries" },
-            { v: "82.7", l: "Chase Avg" },
-            { v: "99", l: "DNA Score" },
-          ].map((s) => (
+          {statPills.map((s) => (
             <div key={s.l} className="flex flex-col">
               <span className="text-base font-bold font-mono text-[#d4a500] leading-none">{s.v}</span>
               <span className="text-[9px] uppercase tracking-[0.18em] text-[#444] mt-0.5">{s.l}</span>
@@ -297,7 +308,7 @@ function AccordionGallerySection() {
   );
 }
 
-function StatWall({ currentODIAvg }: { currentODIAvg: number }) {
+function StatWall({ currentODIAvg, liveStats }: { currentODIAvg: number; liveStats?: { odiMatches: number; testRuns: number; odiHundreds: number; odiRuns: number; } }) {
   const ref = useRef(null);
   const inView = useInView(ref, { once: true, margin: "-80px" });
   const [spinnerDone, setSpinnerDone] = useState<Record<number, boolean>>({});
@@ -310,13 +321,22 @@ function StatWall({ currentODIAvg }: { currentODIAvg: number }) {
     }
   }, [inView]);
 
+  // All values sourced from the live snapshot when present, with sensible
+  // "—" placeholders while the data is loading. The previous hardcoded
+  // values (80 centuries, 500 matches, 12040 Test runs) were stale and
+  // disconnected from the scraper output.
+  const odiHundreds = liveStats?.odiHundreds ?? 0;
+  const odiMatches  = liveStats?.odiMatches  ?? 0;
+  const testRuns    = liveStats?.testRuns    ?? 0;
+  const odiRuns     = liveStats?.odiRuns     ?? 0;
+
   const stats = [
-    { value: 80, suffix: "", label: "International Centuries", accent: "#c0392b" },
-    { value: currentODIAvg, suffix: "", label: "ODI Chase Average — Highest Ever", accent: "#d4a500" },
-    { value: 500, suffix: "+", label: "International Appearances", accent: "#c0392b" },
-    { value: 12040, suffix: "+", label: "Test Runs — Still Climbing", accent: "#d4a500" },
-    { value: 0, suffix: "", label: "ICC Tournaments Without Impact", accent: "#c0392b" },
-    { value: 1, suffix: "", label: "DNA Cluster — He Stands Alone", accent: "#d4a500" },
+    { value: odiHundreds,   suffix: "",   label: "ODI Centuries",                        accent: "#c0392b" },
+    { value: currentODIAvg, suffix: "",   label: "ODI Average",                          accent: "#d4a500" },
+    { value: odiMatches,    suffix: "",   label: "ODI Matches",                          accent: "#c0392b" },
+    { value: testRuns,      suffix: "",   label: "Test Runs",                            accent: "#d4a500" },
+    { value: odiRuns,       suffix: "+",  label: "ODI Runs — Still Climbing",            accent: "#c0392b" },
+    { value: 1,             suffix: "",   label: "DNA Cluster — He Stands Alone",        accent: "#d4a500" },
   ];
 
   return (
@@ -1020,7 +1040,7 @@ function DNARadarSection() {
   );
 }
 
-function ChallengeCTA() {
+function ChallengeCTA({ shrineData }: { shrineData?: KohliShrineLive }) {
   const ref = useRef(null);
   const inView = useInView(ref, { once: true, margin: "-80px" });
   const kohli = PLAYERS.find((p) => p.id === "virat-kohli")!;
@@ -1096,9 +1116,9 @@ function ChallengeCTA() {
 
             <div className="grid grid-cols-3 gap-3 text-center">
               {[
-                { v: kohli.odiStats.runs.toLocaleString(), l: "ODI Runs" },
-                { v: kohli.odiStats.avg.toFixed(1), l: "Average" },
-                { v: kohli.odiStats.hundreds.toString(), l: "Centuries" },
+                { v: shrineData?.currentStats?.runs?.toLocaleString() ?? kohli.odiStats.runs.toLocaleString(), l: "ODI Runs" },
+                { v: shrineData?.currentStats?.avg?.toFixed(1)        ?? kohli.odiStats.avg.toFixed(1),        l: "Average" },
+                { v: String(shrineData?.currentStats?.hundreds ?? kohli.odiStats.hundreds),                 l: "Centuries" },
               ].map((s) => (
                 <div key={s.l}>
                   <div
@@ -1336,10 +1356,19 @@ export default function KohliShrine() {
   const careerArc = shrineData?.careerArc ?? KOHLI_CAREER;
   // Use live ODI avg from shrine endpoint — avoids a second API call
   const currentODIAvg = shrineData?.currentStats?.avg ?? kohli.odiStats.avg;
+  const liveStats = shrineData?.currentStats
+    ? {
+        odiMatches:  shrineData.currentStats.matches,
+        odiHundreds: shrineData.currentStats.hundreds,
+        odiRuns:     shrineData.currentStats.runs,
+        testRuns:    kohli.testStats.runs, // shrine returns ODI only; test is on kohli mock
+      }
+    : undefined;
 
   return (
     <div className="bg-[#0a0a0a]" data-testid="kohli-shrine">
-      <HeroSection />
+      <HeroSection shrineData={shrineData} />
+
       <GallerySection />
       {/* All sections below hero share a live video background */}
       <div className="relative">
@@ -1348,7 +1377,7 @@ export default function KohliShrine() {
           opacity={0.32}
           overlayOpacity={0.82}
         />
-        <StatWall currentODIAvg={currentODIAvg} />
+        <StatWall currentODIAvg={currentODIAvg} liveStats={liveStats} />
         <QuoteStrip />
         <ConstellationSpot />
         <CareerArc careerArc={careerArc} />
@@ -1357,7 +1386,7 @@ export default function KohliShrine() {
         <CareerTimeline />
         <RecordWall recordsOverride={shrineData?.records} />
         <DNARadarSection />
-        <ChallengeCTA />
+        <ChallengeCTA shrineData={shrineData} />
       </div>
     </div>
   );

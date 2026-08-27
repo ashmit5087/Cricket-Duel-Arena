@@ -215,6 +215,74 @@ export const fetchClusters = () =>
 // ─── Battle Arena ─────────────────────────────────────────────────────────────
 
 /**
+ * Per-format career row from the live battle/stats endpoint.
+ * (Same shape as the entries in `LivePlayerProfile.stats.career[]`.)
+ */
+export interface CareerFormatStats {
+  format:   string;
+  matches:  number;
+  innings:  number;
+  runs:     number;
+  avg:      number;
+  sr:       number;
+  hundreds: number;
+  fifties:  number;
+  highest:  string;       // raw "183" or "183*" — call site parses if it needs hs
+  hs:       number;       // parsed highest score (number, no asterisk)
+  wickets:  number;
+  economy:  number;
+  bestBowl: string;
+}
+
+/** Flat shape the BattleArena page already consumes (matches mockData.Player). */
+export interface BattlePlayerStats {
+  testStats: CareerFormatStats;
+  odiStats:  CareerFormatStats;
+  t20Stats:  CareerFormatStats;
+  iplStats:  CareerFormatStats;
+}
+
+/**
+ * Adapter: the live battle response ships career as a `career[]` array, but
+ * the BattleArena page reads `p.testStats / p.odiStats / p.t20Stats / p.iplStats`
+ * (the mock Player shape). This flattens one into the other, defaulting
+ * missing formats to zeros so the spread in BattleView never leaks
+ * `undefined` into `.toFixed()` calls.
+ */
+export function flattenCareerToStats(
+  career: CareerFormatStats[] | undefined | null
+): BattlePlayerStats {
+  const parseHighest = (h: string | undefined | null): number => {
+    if (!h) return 0;
+    const n = parseInt(h.replace("*", ""));
+    return Number.isFinite(n) ? n : 0;
+  };
+  const toRow = (c: Partial<CareerFormatStats> | undefined, format: string): CareerFormatStats => ({
+    format,
+    matches:  c?.matches  ?? 0,
+    innings:  c?.innings  ?? 0,
+    runs:     c?.runs     ?? 0,
+    avg:      c?.avg      ?? 0,
+    sr:       c?.sr       ?? 0,
+    hundreds: c?.hundreds ?? 0,
+    fifties:  c?.fifties  ?? 0,
+    highest:  c?.highest  ?? "0",
+    hs:       c?.hs       ?? parseHighest(c?.highest),
+    wickets:  c?.wickets  ?? 0,
+    economy:  c?.economy  ?? 0,
+    bestBowl: c?.bestBowl ?? "-",
+  });
+  const by: Record<string, Partial<CareerFormatStats>> = {};
+  for (const c of career ?? []) by[c.format] = c;
+  return {
+    testStats: toRow(by["TEST"], "TEST"),
+    odiStats:  toRow(by["ODI"],  "ODI"),
+    t20Stats:  toRow(by["T20I"], "T20I"),
+    iplStats:  toRow(by["IPL"],  "IPL"),
+  };
+}
+
+/**
  * Compute battle stats between two players.
  * Can pass internal IDs or cricInfoIds.
  * Express backend resolves these and proxies to ML service.
@@ -225,8 +293,105 @@ export const fetchBattle = (p1Id: string, p2Id: string, algorithms: string[] = [
     p2: p2Id,
     algorithms: algorithms.join(","),
   });
-  return apiFetch<BattleData>(`/api/battle?${query.toString()}`);
+  // The live response wraps the career array inside p1.stats/p2.stats; the
+  // page consumes the flat Player shape. Keep the raw type loose so callers
+  // can run it through `normalizeBattleData()` for the page-friendly form.
+  return apiFetch<RawBattleData>(`/api/battle?${query.toString()}`);
 };
+
+/**
+ * Live battle response (raw shape from the api-server).
+ * Differs from `BattleData` in three ways: p1/p2 wrap career in `.stats.career`,
+ * DNA similarity + winner live under `.ml`, and `headToHead`/`judge` may be
+ * missing. `normalizeBattleData()` collapses these into the shape the
+ * BattleArena page expects.
+ */
+export interface RawBattleData {
+  statsPending: { p1: boolean; p2: boolean; message: string | null };
+  p1: {
+    internalId: string;
+    cricbuzzPlayerId: string;
+    name: string;
+    country: string;
+    flag: string;
+    role: string;
+    archetypeId: string;
+    archetypeName: string;
+    imageUrl: string;
+    stats: { career: CareerFormatStats[] };
+  };
+  p2: {
+    internalId: string;
+    cricbuzzPlayerId: string;
+    name: string;
+    country: string;
+    flag: string;
+    role: string;
+    archetypeId: string;
+    archetypeName: string;
+    imageUrl: string;
+    stats: { career: CareerFormatStats[] };
+  };
+  ml: {
+    available: boolean;
+    dnaSimilarity: number | null;
+    winnerPredicted: string;
+    confidence: number | null;
+    momentumP1: number;
+    momentumP2: number;
+    xgboostScore: number | null;
+  };
+  narrative: string;
+  statComparison: { winner: string; gap: string; reason: string };
+  algorithmVerdicts: any[];
+  judge: any | null;
+  computedAt: string;
+}
+
+/**
+ * Normalize the raw live battle response into the `BattleData` shape the
+ * BattleArena page already consumes. Joins the live per-format career
+ * arrays into flat `testStats/odiStats/...` fields, flattens `ml.*` up to
+ * the top level, and provides safe defaults for fields the live API
+ * doesn't return (headToHead, statementMoments, archetypeMatch).
+ */
+export function normalizeBattleData(raw: RawBattleData): BattleData {
+  const p1Stats = flattenCareerToStats(raw.p1.stats.career);
+  const p2Stats = flattenCareerToStats(raw.p2.stats.career);
+  return {
+    p1: {
+      cricInfoId: raw.p1.cricbuzzPlayerId,
+      name:       raw.p1.name,
+      country:    raw.p1.country,
+      role:       raw.p1.role,
+      age:        0,
+      testStats:  p1Stats.testStats,
+      odiStats:   p1Stats.odiStats,
+      t20Stats:   p1Stats.t20Stats,
+      iplStats:   { ...p1Stats.iplStats, sixes: 0, fours: 0 },
+      recentForm: [],
+    },
+    p2: {
+      cricInfoId: raw.p2.cricbuzzPlayerId,
+      name:       raw.p2.name,
+      country:    raw.p2.country,
+      role:       raw.p2.role,
+      age:        0,
+      testStats:  p2Stats.testStats,
+      odiStats:   p2Stats.odiStats,
+      t20Stats:   p2Stats.t20Stats,
+      iplStats:   { ...p2Stats.iplStats, sixes: 0, fours: 0 },
+      recentForm: [],
+    },
+    dnaSimilarity:    raw.ml.dnaSimilarity ?? 0,
+    archetypeMatch:   raw.p1.archetypeId === raw.p2.archetypeId,
+    reason:           raw.narrative,
+    statComparison:   { winner: raw.statComparison.winner, reason: raw.statComparison.reason },
+    judge:            raw.judge ?? undefined,
+    statementMoments: [],  // fetched separately via fetchStatementMoments
+    headToHead:       null,
+  };
+}
 
 /**
  * Statement moments only — innings > 1.5× career avg in knockout matches.

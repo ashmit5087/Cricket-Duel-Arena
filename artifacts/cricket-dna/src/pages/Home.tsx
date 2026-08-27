@@ -2,12 +2,32 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { motion, useScroll, useTransform, useInView, animate } from "framer-motion";
 import { ARCHETYPES, PLAYERS, RADAR_AXES } from "@/data/mockData";
+import { useKohliShrine, useLiveTicker } from "@/hooks/usePlayerData";
 
 function HeroSection() {
   const heroRef = useRef<HTMLDivElement>(null);
   const [currentWord, setCurrentWord] = useState(0);
   const [flipping, setFlipping] = useState(false);
   const words = ["Precision", "Obsession", "Consistency", "Dominance", "Legacy"];
+
+  // Live data hookups — the hero copy and stat strip both fall through to
+  // the mock if the API hasn't responded yet, so the page never looks empty.
+  const { data: shrine } = useKohliShrine();
+  const { data: ticker } = useLiveTicker();
+
+  // Derived from the live Kohli snapshot. Total international matches =
+  // TEST + ODI + T20I, the only place this exact sum is meaningful.
+  const kohliMock = PLAYERS.find((p) => p.id === "virat-kohli")!;
+  const liveOdiHundreds = shrine?.currentStats?.hundreds;
+  const liveOdiAvg      = shrine?.currentStats?.avg;
+  const liveOdiMatches  = shrine?.currentStats?.matches;
+  const liveTestMatches = kohliMock.testStats.matches;
+  const liveT20Matches  = kohliMock.t20Stats.matches;
+  const liveIntlTotal =
+    (liveOdiMatches  ?? 0) +
+    (liveTestMatches ?? 0) +
+    (liveT20Matches  ?? 0);
+  const liveMatchCount = ticker?.count ?? 0;
 
   useEffect(() => {
     let gsap: typeof import("gsap").default;
@@ -115,7 +135,9 @@ function HeroSection() {
         </div>
 
         <p className="text-sm md:text-base mb-10 max-w-xl leading-relaxed" style={{ color: "rgba(190,180,160,0.72)", textShadow: "0 1px 6px rgba(0,0,0,0.9)" }}>
-          80 international centuries. 500+ matches. One archetype: The Pressure Architect.
+          {liveOdiHundreds != null
+            ? `${liveOdiHundreds} ODI centuries. ${liveIntlTotal.toLocaleString()} international matches. One archetype: The Pressure Architect.`
+            : `80 international centuries. 500+ matches. One archetype: The Pressure Architect.`}
         </p>
 
         <div className="flex gap-4 flex-wrap mb-14">
@@ -148,10 +170,10 @@ function HeroSection() {
           style={{ borderColor: "rgba(255,255,255,0.08)" }}
         >
           {[
-            { value: "80", label: "Centuries" },
-            { value: "82.7", label: "ODI Chase Avg" },
-            { value: "500+", label: "Int'l Matches" },
-            { value: "1", label: "GOAT" },
+            { value: liveOdiHundreds != null ? String(liveOdiHundreds) : "—", label: "ODI Centuries" },
+            { value: liveOdiAvg      != null ? liveOdiAvg.toFixed(1)      : "—", label: "ODI Average" },
+            { value: liveIntlTotal > 0 ? liveIntlTotal.toString() : "500+", label: "Int'l Matches" },
+            { value: liveMatchCount > 0 ? String(liveMatchCount) : "—", label: "Live Now" },
           ].map((s) => (
             <div key={s.label} data-testid={`stat-${s.label}`}>
               <div
@@ -202,13 +224,31 @@ function CountUpNumber({ target, suffix = "" }: { target: number; suffix?: strin
 function StatsWall() {
   const ref = useRef(null);
   const inView = useInView(ref, { once: true, margin: "-100px" });
+  const { data: shrine } = useKohliShrine();
+
+  // Total international hundreds = ODI + T20I from the live snapshot;
+  // TEST is on the mock (shrine returns ODI only). Falls back to the previous
+  // hardcoded values while the API is loading.
+  const kohliMock = PLAYERS.find((p) => p.id === "virat-kohli")!;
+  const odiHundreds = shrine?.currentStats?.hundreds ?? 80;
+  const testHundreds = kohliMock.testStats.hundreds;
+  const t20Hundreds  = kohliMock.t20Stats.hundreds;
+  const totalHundreds = (shrine ? odiHundreds + testHundreds + t20Hundreds : 80);
+
+  const odiAvg = shrine?.currentStats?.avg ?? 82.7;
+
+  const odiMatches  = shrine?.currentStats?.matches ?? 0;
+  const testMatches = kohliMock.testStats.matches;
+  const t20Matches  = kohliMock.t20Stats.matches;
+  const intlTotal = odiMatches + testMatches + t20Matches;
+
   const stats = [
-    { value: 80, suffix: "", label: "Test & ODI Centuries Combined" },
-    { value: 82.7, suffix: "", label: "Batting Average in Successful ODI Chases" },
-    { value: 500, suffix: "+", label: "International Matches Across Formats" },
-    { value: 2016, suffix: "", label: "The Year He Scored 973 T20I Runs" },
-    { value: 28, suffix: "", label: "Consecutive Test Innings Averaging 50+ (2016-17)" },
-    { value: 1, suffix: "", label: "The Archetype No Algorithm Predicted" },
+    { value: totalHundreds, suffix: "", label: "Test & ODI Centuries Combined" },
+    { value: odiAvg,        suffix: "", label: "Batting Average in Successful ODI Chases" },
+    { value: intlTotal,     suffix: "", label: "International Matches Across Formats" },
+    { value: 2016,          suffix: "", label: "The Year He Scored 973 T20I Runs" },
+    { value: 28,            suffix: "", label: "Consecutive Test Innings Averaging 50+ (2016-17)" },
+    { value: 1,             suffix: "", label: "The Archetype No Algorithm Predicted" },
   ];
 
   return (

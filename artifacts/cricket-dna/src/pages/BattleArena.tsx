@@ -382,14 +382,25 @@ function BattleView({ p1Id, p2Id, algorithms }: { p1Id: string; p2Id: string; al
 
   const { data: liveResult } = useBattle(p1, p2, algorithms);
 
+  // Pick the winner from whichever source is fresher:
+  //   - If the live API responded, use its statComparison.winner.
+  //   - Otherwise, fall back to the hardcoded BATTLE_RESULTS map (last resort).
+  // The previous version keyed on `mockResult` only, which meant even when
+  // live data arrived with a different verdict, the page showed the mock winner.
   const resultKey = `${p1Id}_${p2Id}`;
   const reverseKey = `${p2Id}_${p1Id}`;
   const mockResult = BATTLE_RESULTS[resultKey] || BATTLE_RESULTS[reverseKey];
   const result: any = liveResult ?? mockResult;
 
-  const winner = mockResult ? PLAYERS.find((p) => p.id === mockResult.winner) : p1;
+  const liveWinnerId: string | undefined = liveResult?.statComparison?.winner;
+  const winnerId = liveWinnerId ?? mockResult?.winner ?? p1.id;
+  const winner = PLAYERS.find((p) => p.id === winnerId) ?? p1;
   const loser = winner?.id === p1.id ? p2 : p1;
 
+  // p1Stats / p2Stats: prefer the live response, but the spread only works
+  // if the live data has the flat per-format shape. `useBattle` now runs
+  // `normalizeBattleData()` server-side, so liveResult.p1 already has
+  // testStats/odiStats/... and the spread below actually updates them.
   const p1Stats = liveResult?.p1 ? { ...p1, ...liveResult.p1 } : p1;
   const p2Stats = liveResult?.p2 ? { ...p2, ...liveResult.p2 } : p2;
 

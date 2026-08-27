@@ -34,6 +34,8 @@ import {
   type SearchResult,
   type LiveMatch,
   type KohliShrineLive,
+  normalizeBattleData,
+  type BattleData,
   fetchQuiz,
   submitQuiz,
   fetchQuizLeaderboard,
@@ -324,7 +326,10 @@ export function useBattle(
 
   return useQuery({
     queryKey: ["battle", p1?.cricInfoId, p2?.cricInfoId, algorithms.join(",")],
-    queryFn: () => fetchBattle(p1!.cricInfoId, p2!.cricInfoId, algorithms),
+    queryFn: async () => {
+      const raw = await fetchBattle(p1!.cricInfoId, p2!.cricInfoId, algorithms);
+      return normalizeBattleData(raw);
+    },
     enabled,
     staleTime: STALE.battle,
     // No placeholderData here — BattleView already renders with the
