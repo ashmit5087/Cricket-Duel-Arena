@@ -65,6 +65,16 @@ CREATE TABLE IF NOT EXISTS player_career_stats (
 );
 
 CREATE INDEX IF NOT EXISTS idx_career_stats_player ON player_career_stats(player_id);
+
+-- Self-heal: the stats_source column was added in a later deploy. On a DB
+-- where the table already exists from an earlier schema, CREATE TABLE IF
+-- NOT EXISTS is a no-op and the column is never added — which would make
+-- the index below fail with 'column "stats_source" does not exist'. Adding
+-- it explicitly here (idempotent) makes schema.sql work on both fresh
+-- AND upgraded DBs.
+ALTER TABLE player_career_stats
+  ADD COLUMN IF NOT EXISTS stats_source TEXT NOT NULL DEFAULT 'rapidapi';
+
 CREATE INDEX IF NOT EXISTS idx_career_stats_source ON player_career_stats(stats_source);
 
 -- ============================================================
