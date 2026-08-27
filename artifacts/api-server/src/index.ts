@@ -11,7 +11,7 @@ import { migrate } from "./db/migrate";
 import { redisHealthCheck } from "./db/redis";
 import { initSocketServer } from "./services/socket";
 import { getPollerStatus } from "./workers/poller";
-import { startRefresher, runRefreshCycle } from "./workers/refresher";
+import { startRefresher } from "./workers/refresher";
 import { startKeepAlive } from "./workers/keepAlive";
 import { liveRouter } from "./routes/live";
 import { playersRouter } from "./routes/players";
@@ -71,6 +71,20 @@ app.use("/api/engagement", engagementRouter);
 app.use("/api/kohli",      kohliRouter);
 app.use("/api/quiz",       quizRouter);
 app.use("/api/scrape",     scrapeRouter);
+
+// Manual trigger endpoint support (admin/debug): POST /api/refresh
+// Registered here (not inside boot()) so the 404 catch-all below doesn't
+// swallow it. boot() calls runRefreshCycle() once at startup; this route
+// lets you re-run it on demand after fixing a deploy issue.
+app.post("/api/refresh", async (_req, res) => {
+  try {
+    const { runRefreshCycle } = await import("./workers/refresher");
+    await runRefreshCycle();
+    res.json({ ok: true });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
 
 // RapidAPI quota status — reads the local counter, never costs a request
 app.get("/api/quota", async (_req, res) => {
@@ -152,6 +166,7 @@ app.use((req, res) => {
       "GET  /api/engagement/streaks/:internalId",
       "GET  /api/engagement/streaks/active",
       "GET  /api/quota",
+      "POST /api/refresh",
     ],
   });
 });
@@ -200,12 +215,6 @@ async function boot() {
     await startRefresher();
     logger.info("[boot] ✅ Snapshot refresher started");
   }
-
-  // Manual trigger endpoint support (admin/debug): POST /api/refresh
-  app.post("/api/refresh", async (_req, res) => {
-    try { await runRefreshCycle(); res.json({ ok: true }); }
-    catch (e: any) { res.status(500).json({ error: e.message }); }
-  });
 
   // 4. Keep-alive self-ping (Render free tier anti-sleep)
   startKeepAlive();
