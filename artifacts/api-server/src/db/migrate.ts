@@ -147,6 +147,7 @@ async function migrate() {
         id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
         quiz_id     TEXT NOT NULL,
         user_id     TEXT,
+        player_name TEXT NOT NULL DEFAULT 'Anonymous',
         score       INT NOT NULL,
         max_score   INT NOT NULL,
         percentage  INT NOT NULL,
@@ -158,6 +159,10 @@ async function migrate() {
     await client.query(`
       CREATE INDEX IF NOT EXISTS idx_quiz_attempts_quiz
         ON quiz_attempts(quiz_id, score DESC)
+    `);
+    await client.query(`
+      ALTER TABLE quiz_attempts
+        ADD COLUMN IF NOT EXISTS player_name TEXT NOT NULL DEFAULT 'Anonymous'
     `);
 
     logger.info("[migrate] quiz_attempts table ensured");

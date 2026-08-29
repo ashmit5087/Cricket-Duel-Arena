@@ -328,6 +328,7 @@ CREATE TABLE IF NOT EXISTS quiz_attempts (
   id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   quiz_id     TEXT NOT NULL,
   user_id     TEXT,
+  player_name TEXT NOT NULL DEFAULT 'Anonymous',
   score       INT NOT NULL,
   max_score   INT NOT NULL,
   percentage  INT NOT NULL,

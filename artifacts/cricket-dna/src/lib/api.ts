@@ -482,7 +482,7 @@ export interface QuizResult {
 }
 
 export interface QuizLeaderboardEntry {
-  user_id: string | null;
+  player_name: string | null;
   score: number;
   max_score: number;
   percentage: number;
@@ -495,10 +495,10 @@ export const fetchQuiz = () =>
   apiFetch<QuizData>("/api/quiz/kohli-fanboy");
 
 /** Submit quiz answers with the signed token. */
-export const submitQuiz = (quizToken: string, answers: { questionId: string; selectedIndex: number }[]) =>
+export const submitQuiz = (quizToken: string, playerName: string, answers: { questionId: string; selectedIndex: number }[]) =>
   apiFetch<QuizResult>("/api/quiz/kohli-fanboy/submit", {
     method: "POST",
-    body: JSON.stringify({ quizToken, answers }),
+    body: JSON.stringify({ quizToken, playerName, answers }),
   });
 
 /** Fetch quiz leaderboard. */
