@@ -57,6 +57,16 @@ export interface LivePlayerProfile {
   t20Stats: LiveCareerStats;
   iplStats: { matches: number; runs: number; avg: number; sr: number; sixes: number; fours: number };
   recentForm: { match: string; score: number; date: string }[];
+  // Live ML/DNA fields — only populated when the source is a battle
+  // response with a successful ML cluster lookup. Optional so other
+  // LivePlayerProfile producers (e.g. /api/players/:id/stats) don't
+  // need to fill them in.
+  archetypeId?: string;
+  archetypeName?: string;
+  archetypeColor?: string | null;
+  dnaScore?: number | null;
+  playerVector?: number[] | null;
+  isOutlier?: boolean;
 }
 
 export interface KNNTwin {
@@ -96,13 +106,32 @@ export interface BattleData {
     winner: string;
     reason: string;
   };
-  judge?: {
-    agreement_rate: number;
-    reasoning: string;
-    verdicts: Record<string, string>;
-  };
+  judge?: JudgeSummary;
+  algorithmVerdicts?: AlgorithmVerdict[];
   statementMoments: StatementMoment[];
   headToHead: HeadToHead | null;
+}
+
+export interface AlgorithmVerdict {
+  id: string;
+  name: string;
+  description: string;
+  winner: string;          // ESPN Cricinfo ID of predicted winner
+  winnerName: string;
+  confidence: number;      // 0-100
+  reasoning: string;
+  dnaSimilarity?: number;  // only on cosine_dna model
+  isOutlier1?: boolean;    // only on dbscan_outlier model
+  isOutlier2?: boolean;
+}
+
+export interface JudgeSummary {
+  winner: string;
+  winnerName: string;
+  agreement_rate: number;
+  models_agreed: number;
+  models_total: number;
+  reasoning: string;
 }
 
 export interface StatementMoment {
@@ -152,23 +181,6 @@ export interface ClusterData {
  */
 export const fetchPlayerStats = (cricInfoId: string) =>
   apiFetch<LivePlayerProfile>(`/api/player/${cricInfoId}/stats`);
-
-/**
- * Paginated player list with optional filters.
- * ?format=test|odi|t20  ?cluster=A  ?search=kohli
- */
-export const fetchPlayers = (params?: {
-  format?: "test" | "odi" | "t20";
-  cluster?: string;
-  search?: string;
-}) => {
-  const q = new URLSearchParams();
-  if (params?.format) q.set("format", params.format);
-  if (params?.cluster) q.set("cluster", params.cluster);
-  if (params?.search) q.set("search", params.search);
-  const qs = q.toString() ? `?${q}` : "";
-  return apiFetch<SearchResult[]>(`/api/players${qs}`);
-};
 
 /**
  * Fuzzy name search — used in DNASearch and BattleArena PlayerPicker.
@@ -317,6 +329,10 @@ export interface RawBattleData {
     role: string;
     archetypeId: string;
     archetypeName: string;
+    archetypeColor: string | null;
+    dnaScore: number | null;
+    playerVector: number[] | null;
+    isOutlier: boolean;
     imageUrl: string;
     stats: { career: CareerFormatStats[] };
   };
@@ -329,6 +345,10 @@ export interface RawBattleData {
     role: string;
     archetypeId: string;
     archetypeName: string;
+    archetypeColor: string | null;
+    dnaScore: number | null;
+    playerVector: number[] | null;
+    isOutlier: boolean;
     imageUrl: string;
     stats: { career: CareerFormatStats[] };
   };
@@ -343,8 +363,8 @@ export interface RawBattleData {
   };
   narrative: string;
   statComparison: { winner: string; gap: string; reason: string };
-  algorithmVerdicts: any[];
-  judge: any | null;
+  algorithmVerdicts: AlgorithmVerdict[];
+  judge: JudgeSummary | null;
   computedAt: string;
 }
 
@@ -370,6 +390,11 @@ export function normalizeBattleData(raw: RawBattleData): BattleData {
       t20Stats:   p1Stats.t20Stats,
       iplStats:   { ...p1Stats.iplStats, sixes: 0, fours: 0 },
       recentForm: [],
+      archetypeId:    raw.p1.archetypeId,
+      archetypeName:  raw.p1.archetypeName,
+      archetypeColor: raw.p1.archetypeColor,
+      dnaScore:       raw.p1.dnaScore,
+      playerVector:   raw.p1.playerVector,
     },
     p2: {
       cricInfoId: raw.p2.cricbuzzPlayerId,
@@ -382,12 +407,18 @@ export function normalizeBattleData(raw: RawBattleData): BattleData {
       t20Stats:   p2Stats.t20Stats,
       iplStats:   { ...p2Stats.iplStats, sixes: 0, fours: 0 },
       recentForm: [],
+      archetypeId:    raw.p2.archetypeId,
+      archetypeName:  raw.p2.archetypeName,
+      archetypeColor: raw.p2.archetypeColor,
+      dnaScore:       raw.p2.dnaScore,
+      playerVector:   raw.p2.playerVector,
     },
     dnaSimilarity:    raw.ml.dnaSimilarity ?? 0,
     archetypeMatch:   raw.p1.archetypeId === raw.p2.archetypeId,
     reason:           raw.narrative,
     statComparison:   { winner: raw.statComparison.winner, reason: raw.statComparison.reason },
     judge:            raw.judge ?? undefined,
+    algorithmVerdicts: raw.algorithmVerdicts ?? [],
     statementMoments: [],  // fetched separately via fetchStatementMoments
     headToHead:       null,
   };

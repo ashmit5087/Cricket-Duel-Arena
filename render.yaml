@@ -7,6 +7,10 @@
 #   2. Render Dashboard → New → Blueprint → select this repo
 #   3. Fill in the sync:false env vars when prompted
 #   4. Frontend deploys separately on Vercel
+#
+# IMPORTANT: After first deploy, get the ML service URL from the
+# Render dashboard and set it as ML_URL in the API server env vars
+# (Render Blueprint doesn't support https:// prefix on service URLs).
 # ============================================================
 
 databases:
@@ -30,6 +34,16 @@ services:
     dockerContext: artifacts/ml
     plan: free
     healthCheckPath: /health
+    envVars:
+      # Self-ping URL — keeps the free-tier ML service warm so it doesn't
+      # sleep. Set to the Render-assigned URL of this service after first deploy.
+      # Pattern: https://cricket-dna-ml.onrender.com
+      - key: KEEP_ALIVE_URL
+        sync: false
+      - key: FRONTEND_URL
+        sync: false            # Vercel frontend URL (for CORS)
+      - key: API_SERVER_URL
+        sync: false            # Render API server URL (for CORS)
 
   # ── API server (Node/Express) ───────────────────────────────────────────────
   - type: web
@@ -44,12 +58,22 @@ services:
     healthCheckPath: /health
     envVars:
       # ── Secrets — paste these in the Render dashboard ──
+      - key: RAPIDAPI_KEY
+        sync: false            # Optional: only needed as RapidAPI fallback
       - key: GEMINI_API_KEY
         sync: false
       - key: QUIZ_SIGNING_SECRET
-        sync: false            # any long random string — keeps quiz tokens valid across deploys
+        sync: false            # any long random string
       - key: FRONTEND_URL
         sync: false            # paste your Vercel URL after frontend deploys
+      # ── ML service URL ──
+      # IMPORTANT: Render Blueprints don't auto-prefix https:// on service URLs.
+      # After first deploy: go to cricket-dna-api → Environment → set ML_URL
+      # manually to: https://cricket-dna-ml.onrender.com
+      # The fromService property below gives the raw host which the API server
+      # wraps with https:// at runtime via the ML_URL env var override.
+      - key: ML_URL
+        sync: false            # Set manually: https://cricket-dna-ml.onrender.com
       # ── Key Value (Redis) wiring ──
       - key: REDIS_URL
         fromService:
@@ -77,16 +101,12 @@ services:
         fromDatabase:
           name: cricket-dna-postgres
           property: password
-      # ── ML service wiring ──
-      - key: ML_URL
-        fromService:
-          name: cricket-dna-ml
-          type: web
-          property: hostport
       # ── App config ──
       - key: NODE_ENV
         value: production
       - key: KEEP_ALIVE_ENABLED
         value: "true"
+      - key: API_SERVER_URL
+        sync: false            # Set to this service's Render URL for self-keep-alive
 
-  # migrate runs automatically before the API starts (see startCommand above)
+  # migrate + bootstrap run automatically before the API starts (see startCommand above)

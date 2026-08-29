@@ -1,5 +1,5 @@
 // src/index.ts
-// Cricket DNA API Server v2 — Cricbuzz + PostgreSQL + Redis + Socket.io
+// Cricket DNA API Server v2 — Cricbuzz + PostgreSQL + Redis
 
 import "dotenv/config";
 import express from "express";
@@ -9,21 +9,17 @@ import { logger } from "./utils/logger";
 import { healthCheck as pgHealth } from "./db/postgres";
 import { migrate } from "./db/migrate";
 import { redisHealthCheck } from "./db/redis";
-import { initSocketServer } from "./services/socket";
-import { getPollerStatus } from "./workers/poller";
 import { startRefresher } from "./workers/refresher";
 import { startKeepAlive } from "./workers/keepAlive";
-import { liveRouter } from "./routes/live";
 import { playersRouter } from "./routes/players";
 import { battleRouter } from "./routes/battle";
-import { engagementRouter } from "./routes/engagement";
 import { kohliRouter } from "./routes/kohli";
 import { quizRouter } from "./routes/quiz";
 import { scrapeRouter } from "./routes/scrape";
 import { getQuotaStatus } from "./services/cricbuzz";
 import { PLAYER_ROSTER } from "./models/player";
 
-// ── App + HTTP server (Socket.io requires raw http.Server) ────────────────────
+// ── App + HTTP server ────────────────────────────────────────────────────────
 
 const app        = express();
 const httpServer = createServer(app);
@@ -64,11 +60,9 @@ app.use((req, _res, next) => {
 
 // ── Routes ────────────────────────────────────────────────────────────────────
 
-app.use("/api/live",       liveRouter);
 app.use("/api/players",    playersRouter);
 app.use("/api/player",     playersRouter);   // alias — frontend sends cricbuzzPlayerId here
 app.use("/api/battle",     battleRouter);
-app.use("/api/engagement", engagementRouter);
 app.use("/api/kohli",      kohliRouter);
 app.use("/api/quiz",       quizRouter);
 app.use("/api/scrape",     scrapeRouter);
@@ -93,12 +87,28 @@ app.get("/api/quota", async (_req, res) => {
   catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-// ML placeholders (real data when Python service is running)
-app.get("/api/constellation", (_req, res) => res.json([]));
-app.get("/api/clusters",      (_req, res) => res.json([]));
+// GET /api/algorithms — enabled algorithm list for the BattleArena picker.
+// Was documented in the 404 catch-all but never actually mounted, so
+// useAlgorithms always 404'd and the frontend silently fell back to a
+// hardcoded default. Mounted for real now.
+app.get("/api/algorithms", (_req, res) => {
+  res.json([
+    { id: "xgboost",       name: "XGBoost",       description: "Gradient-boosted DNA similarity model" },
+    { id: "random_forest", name: "Random Forest", description: "Ensemble stat-comparison model" },
+  ]);
+});
+
+// GET /api/constellation, /api/clusters — proxy straight through to the ML
+// service. These used to be hardcoded stubs returning `[]`, which meant
+// React Query treated an empty array as a successful, fresher-than-mock
+// response and silently blanked the Constellation and Archetypes pages.
+app.get("/api/constellation", async (_req, res) => { await proxyToML("/constellation", res); });
+app.get("/api/clusters",      async (_req, res) => { await proxyToML("/clusters", res); });
 app.get("/api/search",        async (req, res) => {
-  // proxy to the players search handler
-  req.url = `/search${req.url.includes("?") ? req.url.slice(req.url.indexOf("?") - 1) : ""}`;
+  // proxy to the players search handler. Keep the query string intact:
+  // slice from "?" (not one char before it, which used to produce
+  // "/searchh?q=..." and fall through to the /:internalId route).
+  req.url = `/search${req.url.includes("?") ? req.url.slice(req.url.indexOf("?")) : ""}`;
   playersRouter(req, res, () => res.status(404).json({ error: "Not found" }));
 });
 
@@ -106,7 +116,16 @@ app.get("/api/search",        async (req, res) => {
 // Python service. Path params carry the internalId (e.g. "virat-kohli"); we
 // resolve to the ESPN Cricinfo ID the ML pipeline is keyed on, and 503/502
 // gracefully if the ML service is asleep/unreachable.
-const ML_URL = process.env.ML_URL ?? "http://localhost:8000";
+//
+// ML_URL normalisation: Render's fromService.property=hostport gives "host:port"
+// without a scheme. We add https:// if no scheme is present so fetch() works.
+const _rawMlUrl = process.env.ML_URL ?? "http://localhost:8000";
+const ML_URL = _rawMlUrl.startsWith("http") ? _rawMlUrl : `https://${_rawMlUrl}`;
+// Re-export normalised URL so other modules (battle.ts, scraper.ts, etc.) can
+// read from process.env and get the fixed value too.
+if (!process.env.ML_URL?.startsWith("http")) {
+  process.env.ML_URL = ML_URL;
+}
 
 function resolveEspnId(internalId: string): string | null {
   const entry = PLAYER_ROSTER.find((p) => p.internalId === internalId);
@@ -163,7 +182,6 @@ app.get("/api/similarity", async (req, res) => {
 
 app.get("/health", async (_req, res) => {
   const [pg, redis] = await Promise.all([pgHealth(), redisHealthCheck()]);
-  const poller = getPollerStatus();
   const ml_url = process.env.ML_URL ?? "http://localhost:8000";
 
   let mlOk = false;
@@ -183,14 +201,10 @@ app.get("/health", async (_req, res) => {
       ml:          mlOk  ? "✅ connected"  : "⚠️  unavailable",
       rapidapi:    process.env.RAPIDAPI_KEY ? "✅ key set" : "❌ RAPIDAPI_KEY missing",
       gemini:      process.env.GEMINI_API_KEY ? "✅ key set" : "⚠️  not set",
-      websocket:   "✅ running",
     },
-    poller: {
-      running:       poller.running,
-      activeMatches: poller.activeMatches,
-      matchIds:      poller.matchIds,
-    },
-    refresher: process.env.RAPIDAPI_KEY ? "✅ enabled (8h snapshot refresh)" : "❌ RAPIDAPI_KEY missing",
+    refresher: process.env.RAPIDAPI_KEY
+      ? "✅ enabled (12h snapshot refresh, scraper + RapidAPI fallback)"
+      : "✅ enabled (12h snapshot refresh, scraper only — RAPIDAPI_KEY not set)",
     version: "2.0.0",
   });
 });
@@ -203,25 +217,21 @@ app.use((req, res) => {
     path:  req.path,
     available: [
       "GET  /health",
-      "GET  /api/live/matches",
-      "GET  /api/live/match/:matchId",
-      "GET  /api/live/match/:matchId/commentary",
-      "GET  /api/live/history",
-      "GET  /api/players",
       "GET  /api/players/search?q=kohli",
-      "GET  /api/players/:internalId",
       "GET  /api/players/:internalId/stats",
-      "GET  /api/players/:internalId/momentum",
       "GET  /api/battle?p1=virat-kohli&p2=rohit-sharma",
       "GET  /api/battle/moments?p1=virat-kohli&p2=rohit-sharma",
-      "GET  /api/battle/history/:internalId",
-      "GET  /api/engagement/aura/:internalId",
-      "GET  /api/engagement/aura/leaderboard",
-      "GET  /api/engagement/rivalry/:p1Id/:p2Id",
-      "GET  /api/engagement/rivalry/hottest",
-      "GET  /api/engagement/rankings?format=overall",
-      "GET  /api/engagement/streaks/:internalId",
-      "GET  /api/engagement/streaks/active",
+      "GET  /api/cluster/:internalId",
+      "GET  /api/knn?player=virat-kohli&k=5",
+      "GET  /api/similarity?p1=virat-kohli&p2=rohit-sharma",
+      "GET  /api/constellation",
+      "GET  /api/clusters",
+      "GET  /api/algorithms",
+      "GET  /api/search?q=kohli",
+      "GET  /api/kohli",
+      "GET  /api/quiz/kohli-fanboy",
+      "GET  /api/scrape/live-matches",
+      "GET  /api/scrape/player-stats/:cricbuzzId",
       "GET  /api/quota",
       "POST /api/refresh",
     ],
@@ -260,20 +270,25 @@ async function boot() {
     logger.info("[boot] ✅ Gemini API key set");
   }
 
-  // 2. Init Socket.io
-  initSocketServer(httpServer);
-  logger.info("[boot] ✅ Socket.io initialised");
-
-  // 3. Snapshot refresher — replaces the 10s live poller.
-  // External Cricbuzz calls now happen ONLY here (8h cadence + boot-if-stale).
+  // 2. Snapshot refresher — replaces the 10s live poller.
+  // External Cricbuzz calls now happen ONLY here (12h cadence + boot-if-stale).
+  //
+  // The refresher's PRIMARY path is the free ML-service scraper (services/
+  // scraper.ts -> ML /scrape/*), with RapidAPI only as a paid fallback when
+  // the scraper is unavailable (see services/cricbuzz.ts
+  // getPlayerStatsWithFallback). Gating the entire refresher behind
+  // RAPIDAPI_KEY — which isn't even documented in env.example — meant the
+  // free scraper path never ran on any deploy without that optional paid
+  // key, so career stats never refreshed and the "scraper-first" pipeline
+  // never actually executed. The refresher now always starts; RapidAPI is
+  // used opportunistically wherever the key happens to be set.
   if (!process.env.RAPIDAPI_KEY) {
-    logger.warn("[boot] ⚠️  RAPIDAPI_KEY not set — snapshot refresher disabled; serving seeded stats only");
-  } else {
-    await startRefresher();
-    logger.info("[boot] ✅ Snapshot refresher started");
+    logger.warn("[boot] ⚠️  RAPIDAPI_KEY not set — refresher will rely solely on the free ML scraper (no RapidAPI fallback)");
   }
+  await startRefresher();
+  logger.info("[boot] ✅ Snapshot refresher started");
 
-  // 4. Keep-alive self-ping (Render free tier anti-sleep)
+  // 3. Keep-alive self-ping (Render free tier anti-sleep)
   startKeepAlive();
 
   // 4. Start listening
@@ -283,7 +298,6 @@ async function boot() {
 ║        Cricket DNA API — v2.0.0                  ║
 ║                                                  ║
 ║  HTTP  →  http://localhost:${PORT}                 ║
-║  WS    →  ws://localhost:${PORT}  (Socket.io)      ║
 ║  ML    →  ${(process.env.ML_URL ?? "http://localhost:8000").padEnd(34)}║
 ╚══════════════════════════════════════════════════╝
     `);

@@ -197,6 +197,7 @@ async function roundRobinRefresh(): Promise<void> {
        FROM players p
        LEFT JOIN player_career_stats s ON s.player_id = p.id
       WHERE p.cricbuzz_player_id IS NOT NULL AND p.cricbuzz_player_id <> ''
+        AND p.is_retired = FALSE   -- retired players: seeded once, never re-fetched
       GROUP BY p.id, p.cricbuzz_player_id, p.name
      HAVING MAX(s.last_synced) IS NULL
          OR MAX(s.last_synced) < NOW() - ($1 || ' days')::interval

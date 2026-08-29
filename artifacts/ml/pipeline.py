@@ -256,6 +256,291 @@ class CricketDNAPipeline:
             })
         return clusters
 
+    # ─── 6-Model Battle Prediction ────────────────────────────────────────────
+
+    def predict_battle(
+        self,
+        id1: str,
+        id2: str,
+        career1: list | None = None,   # [{format, matches, runs, avg, sr, hundreds, fifties}]
+        career2: list | None = None,
+        name1: str = "",
+        name2: str = "",
+    ) -> dict:
+        """
+        Run 6 independent ML models and return per-model verdicts + judge summary.
+
+        Models:
+          1. kmeans_archetype  — centroid distance in K-Means cluster space
+          2. cosine_dna        — cosine similarity on full 20-dim DNA vector
+          3. dbscan_outlier    — DBSCAN outlier status (novelty bonus/penalty)
+          4. pca_dominance     — PC1 projection score (principal direction)
+          5. format_versatility — dim_7 cross-format consistency metric
+          6. composite_batting — weighted batting stats (avg/sr/100s/50s)
+        """
+        if not self.fitted:
+            return {"models": [], "judge": None, "error": "Pipeline not fitted"}
+
+        id1, id2 = str(id1), str(id2)
+
+        # Resolve rows
+        row1 = self.df[self.df["cricInfoId"] == id1]
+        row2 = self.df[self.df["cricInfoId"] == id2]
+        missing = []
+        if row1.empty: missing.append(id1)
+        if row2.empty: missing.append(id2)
+        if missing:
+            return {"models": [], "judge": None, "error": f"Player(s) not in pipeline: {missing}"}
+
+        row1, row2 = row1.iloc[0], row2.iloc[0]
+        n1 = name1 or row1["name"]
+        n2 = name2 or row2["name"]
+
+        # Resolve index positions for similarity matrix
+        def idx(cid):
+            try: return self.player_index.index(cid)
+            except ValueError: return None
+
+        i1, i2 = idx(id1), idx(id2)
+
+        models = []
+
+        # ── MODEL 1: K-Means archetype centroid distance ──────────────────────
+        # Winner = player whose scaled vector is closer to their cluster centroid
+        try:
+            if i1 is not None and i2 is not None and self.kmeans is not None:
+                v1 = self.vectors_scaled[i1]
+                v2 = self.vectors_scaled[i2]
+                c1_center = self.kmeans.cluster_centers_[self.kmeans.labels_[i1]]
+                c2_center = self.kmeans.cluster_centers_[self.kmeans.labels_[i2]]
+                d1 = float(np.linalg.norm(v1 - c1_center))
+                d2 = float(np.linalg.norm(v2 - c2_center))
+                arch1 = ARCHETYPE_LABELS.get(row1["archetype_id"], {}).get("name", row1["archetype_id"])
+                arch2 = ARCHETYPE_LABELS.get(row2["archetype_id"], {}).get("name", row2["archetype_id"])
+                # Lower distance = more archetypally pure = better
+                if d1 <= d2:
+                    winner_id, winner_name, conf = id1, n1, min(100, round((d2 - d1) / max(d2, 0.01) * 200, 1))
+                    reason = f"{n1} is {round(d2-d1,2):.2f} units closer to the '{arch1}' centroid"
+                else:
+                    winner_id, winner_name, conf = id2, n2, min(100, round((d1 - d2) / max(d1, 0.01) * 200, 1))
+                    reason = f"{n2} is {round(d1-d2,2):.2f} units closer to the '{arch2}' centroid"
+                models.append({
+                    "id": "kmeans_archetype",
+                    "name": "K-Means Archetype",
+                    "description": "Measures how true each player is to their playing archetype using K-Means cluster analysis. The player sitting closest to their archetype's centroid is more archetypally 'pure'.",
+                    "winner": winner_id,
+                    "winnerName": winner_name,
+                    "confidence": max(5.0, conf),
+                    "reasoning": reason,
+                })
+        except Exception as e:
+            print(f"[predict_battle] kmeans model error: {e}")
+
+        # ── MODEL 2: Cosine DNA similarity ────────────────────────────────────
+        # Winner = player with higher composite DNA score (dim_19)
+        try:
+            dna1 = float(row1["dim_19"])
+            dna2 = float(row2["dim_19"])
+            sim = round(float(self.sim_matrix[i1, i2]) * 100, 1) if i1 is not None and i2 is not None else 50.0
+            gap = abs(dna1 - dna2)
+            conf = min(95, round(gap * 1.8, 1))
+            if dna1 >= dna2:
+                winner_id, winner_name = id1, n1
+                reason = f"{n1} scores {dna1:.1f} vs {n2}'s {dna2:.1f} on the 20-dim DNA composite. DNA similarity between them: {sim}%"
+            else:
+                winner_id, winner_name = id2, n2
+                reason = f"{n2} scores {dna2:.1f} vs {n1}'s {dna1:.1f} on the 20-dim DNA composite. DNA similarity between them: {sim}%"
+            models.append({
+                "id": "cosine_dna",
+                "name": "Cosine DNA Match",
+                "description": "Compares the 20-dimensional player DNA vector using cosine similarity. Each dimension captures a specific performance trait (pressure score, boundary %, death-over SR, etc.). The player with the higher overall DNA score wins.",
+                "winner": winner_id,
+                "winnerName": winner_name,
+                "confidence": max(5.0, conf),
+                "reasoning": reason,
+                "dnaSimilarity": sim,
+            })
+        except Exception as e:
+            print(f"[predict_battle] cosine model error: {e}")
+
+        # ── MODEL 3: DBSCAN outlier bonus ─────────────────────────────────────
+        # Outlier = sui generis player who breaks the archetype mould.
+        # Outlier vs non-outlier → outlier wins (uniqueness bonus).
+        # Both outlier or both non-outlier → use DNA score as tiebreak.
+        try:
+            out1 = bool(row1.get("is_outlier", False))
+            out2 = bool(row2.get("is_outlier", False))
+            dna1f, dna2f = float(row1["dim_19"]), float(row2["dim_19"])
+            if out1 and not out2:
+                winner_id, winner_name = id1, n1
+                conf = 62.0
+                reason = f"{n1} is a DBSCAN outlier — a genuinely unique player not captured by any archetype. Outliers often defy statistical expectations."
+            elif out2 and not out1:
+                winner_id, winner_name = id2, n2
+                conf = 62.0
+                reason = f"{n2} is a DBSCAN outlier — a genuinely unique player not captured by any archetype. Outliers often defy statistical expectations."
+            elif dna1f >= dna2f:
+                winner_id, winner_name = id1, n1
+                conf = max(5.0, min(55.0, abs(dna1f - dna2f) * 1.2))
+                reason = f"Both players are classified as {'outliers' if out1 else 'core cluster members'}. Tiebreak: DNA score favours {n1} ({dna1f:.1f} vs {dna2f:.1f})."
+            else:
+                winner_id, winner_name = id2, n2
+                conf = max(5.0, min(55.0, abs(dna1f - dna2f) * 1.2))
+                reason = f"Both players are classified as {'outliers' if out1 else 'core cluster members'}. Tiebreak: DNA score favours {n2} ({dna2f:.1f} vs {dna1f:.1f})."
+            models.append({
+                "id": "dbscan_outlier",
+                "name": "DBSCAN Uniqueness",
+                "description": "DBSCAN density-clustering labels players as 'core' (within a dense archetype cloud) or 'outlier' (statistically unique). Outlier players get a uniqueness bonus — their career patterns are harder to model, making them wildcards.",
+                "winner": winner_id,
+                "winnerName": winner_name,
+                "confidence": conf,
+                "reasoning": reason,
+                "isOutlier1": out1,
+                "isOutlier2": out2,
+            })
+        except Exception as e:
+            print(f"[predict_battle] dbscan model error: {e}")
+
+        # ── MODEL 4: PCA principal dominance ─────────────────────────────────
+        # PC1 = direction of maximum variance in the dataset.
+        # Higher PC1 projection = player dominates the principal skill axis.
+        try:
+            if i1 is not None and i2 is not None and self.pca is not None:
+                pc_coords = self.pca.transform(self.vectors_scaled)
+                pc1_1 = float(pc_coords[i1, 0])
+                pc1_2 = float(pc_coords[i2, 0])
+                gap = abs(pc1_1 - pc1_2)
+                conf = min(90, round(gap * 15, 1))
+                if pc1_1 >= pc1_2:
+                    winner_id, winner_name = id1, n1
+                    reason = f"{n1} projects {pc1_1:.2f} on the principal skill axis vs {n2}'s {pc1_2:.2f} — capturing {self.pca.explained_variance_ratio_[0]*100:.0f}% of all player variance."
+                else:
+                    winner_id, winner_name = id2, n2
+                    reason = f"{n2} projects {pc1_2:.2f} on the principal skill axis vs {n1}'s {pc1_1:.2f} — capturing {self.pca.explained_variance_ratio_[0]*100:.0f}% of all player variance."
+                models.append({
+                    "id": "pca_dominance",
+                    "name": "PCA Principal Dominance",
+                    "description": "Principal Component Analysis (PCA) finds the directions of maximum variance across all players. PC1 captures the dominant skill axis. A higher PC1 score means the player exemplifies the 'platonic ideal' of cricket excellence.",
+                    "winner": winner_id,
+                    "winnerName": winner_name,
+                    "confidence": max(5.0, conf),
+                    "reasoning": reason,
+                })
+        except Exception as e:
+            print(f"[predict_battle] pca model error: {e}")
+
+        # ── MODEL 5: Format versatility ───────────────────────────────────────
+        # dim_7 = format_versatility (0-100). Cross-format average consistency.
+        try:
+            v1_score = float(row1.get("dim_7", 50))
+            v2_score = float(row2.get("dim_7", 50))
+            gap = abs(v1_score - v2_score)
+            conf = min(90, round(gap * 1.5, 1))
+            if v1_score >= v2_score:
+                winner_id, winner_name = id1, n1
+                reason = f"{n1} scores {v1_score:.1f}/100 on format versatility vs {n2}'s {v2_score:.1f}/100. Consistent performers across TEST, ODI, and T20I earn a higher score."
+            else:
+                winner_id, winner_name = id2, n2
+                reason = f"{n2} scores {v2_score:.1f}/100 on format versatility vs {n1}'s {v1_score:.1f}/100. Consistent performers across TEST, ODI, and T20I earn a higher score."
+            models.append({
+                "id": "format_versatility",
+                "name": "Format Versatility",
+                "description": "Measures how consistently a player performs across all three international formats (Test, ODI, T20I). A low standard deviation of batting averages across formats gives a high versatility score — true all-format greats score highest.",
+                "winner": winner_id,
+                "winnerName": winner_name,
+                "confidence": max(5.0, conf),
+                "reasoning": reason,
+            })
+        except Exception as e:
+            print(f"[predict_battle] versatility model error: {e}")
+
+        # ── MODEL 6: Statistical composite (career stats from api-server) ─────
+        # Uses actual career stats if passed; falls back to dim_0 (pressure_score)
+        try:
+            def career_to_composite(career_rows):
+                """Weighted batting composite across formats."""
+                if not career_rows:
+                    return None
+                total, weight_sum = 0.0, 0.0
+                weights = {"TEST": 1.5, "ODI": 1.2, "T20I": 1.0, "IPL": 0.8}
+                for row in career_rows:
+                    fmt = row.get("format", "")
+                    w = weights.get(fmt, 1.0)
+                    avg  = float(row.get("avg", 0) or 0)
+                    sr   = float(row.get("sr", 0) or 0)
+                    h100 = float(row.get("hundreds", 0) or 0)
+                    h50  = float(row.get("fifties", 0) or 0)
+                    m    = float(row.get("matches", 1) or 1)
+                    # Normalize avg (0-100): 60=100, 20=0
+                    avg_n  = min(100, max(0, (avg - 20) / 40 * 100))
+                    # Normalize SR by format
+                    sr_ref = {"TEST": 55, "ODI": 75, "T20I": 120, "IPL": 130}.get(fmt, 100)
+                    sr_n   = min(100, max(0, sr / sr_ref * 70))
+                    h_n    = min(100, h100 / m * 1000)
+                    f_n    = min(100, h50 / m * 200)
+                    composite = avg_n * 0.40 + sr_n * 0.25 + h_n * 0.25 + f_n * 0.10
+                    total += composite * w
+                    weight_sum += w
+                return total / weight_sum if weight_sum > 0 else None
+
+            c1_score = career_to_composite(career1)
+            c2_score = career_to_composite(career2)
+
+            # Fall back to dim_0 (pressure_score proxy) if no career data
+            if c1_score is None: c1_score = float(row1.get("dim_0", 50))
+            if c2_score is None: c2_score = float(row2.get("dim_0", 50))
+
+            gap = abs(c1_score - c2_score)
+            conf = min(92, round(gap * 1.6, 1))
+            if c1_score >= c2_score:
+                winner_id, winner_name = id1, n1
+                reason = f"{n1} scores {c1_score:.1f} vs {n2}'s {c2_score:.1f} on the weighted multi-format batting composite (avg×0.4 + SR×0.25 + 100s×0.25 + 50s×0.10)."
+            else:
+                winner_id, winner_name = id2, n2
+                reason = f"{n2} scores {c2_score:.1f} vs {n1}'s {c1_score:.1f} on the weighted multi-format batting composite (avg×0.4 + SR×0.25 + 100s×0.25 + 50s×0.10)."
+            models.append({
+                "id": "composite_batting",
+                "name": "Statistical Composite",
+                "description": "A weighted batting composite across all formats. Batting average (40%), strike rate (25%), centuries per match (25%), and fifties per match (10%) are combined with format-specific weights (Tests weighted highest, IPL lowest).",
+                "winner": winner_id,
+                "winnerName": winner_name,
+                "confidence": max(5.0, conf),
+                "reasoning": reason,
+            })
+        except Exception as e:
+            print(f"[predict_battle] composite model error: {e}")
+
+        # ── Judge: majority vote ──────────────────────────────────────────────
+        if not models:
+            return {"models": [], "judge": None}
+
+        votes_1 = [m for m in models if m["winner"] == id1]
+        votes_2 = [m for m in models if m["winner"] == id2]
+        winner_id   = id1 if len(votes_1) >= len(votes_2) else id2
+        winner_name = n1 if winner_id == id1 else n2
+        loser_name  = n2 if winner_id == id1 else n1
+        agree_count = max(len(votes_1), len(votes_2))
+        total_count = len(models)
+        agreement_rate = round(agree_count / total_count * 100, 1)
+
+        # Build dissent summary
+        dissenting = [m for m in models if m["winner"] != winner_id]
+        if dissenting:
+            dissent_str = "Dissent: " + "; ".join(f"{m['name']} favours {loser_name}" for m in dissenting)
+        else:
+            dissent_str = f"Unanimous — all {total_count} models agree."
+
+        judge = {
+            "winner": winner_id,
+            "winnerName": winner_name,
+            "agreement_rate": agreement_rate,
+            "models_agreed": agree_count,
+            "models_total": total_count,
+            "reasoning": f"{agree_count} of {total_count} models favour {winner_name}. {dissent_str}",
+        }
+
+        return {"models": models, "judge": judge}
+
     # ─── Persist / load ───────────────────────────────────────────────────────
 
     def _save(self):

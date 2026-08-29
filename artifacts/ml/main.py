@@ -15,6 +15,7 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import asyncio
+import os
 import time
 
 from scraper import load_or_fetch_all
@@ -65,7 +66,19 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3001", "http://localhost:5173", "*"],
+    # Only the api-server (and local dev origins) should call the ML service
+    # directly. The previous config mixed explicit origins with "*", which
+    # is redundant at best (the wildcard already allows everything) and
+    # actively wrong if credentials are ever turned on, since FastAPI/browsers
+    # reject "*" combined with allow_credentials=True. Kept explicit so a
+    # future credentialed call doesn't silently break.
+    allow_origins=[
+        "http://localhost:3001",
+        "http://localhost:5173",
+        os.environ.get("FRONTEND_URL", ""),
+        os.environ.get("API_SERVER_URL", ""),
+    ],
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -227,3 +240,58 @@ def list_players():
         }
         for _, row in pipeline.df.iterrows()
     ]
+
+
+# ─── 6-Model Battle Prediction ────────────────────────────────────────────────
+
+from pydantic import BaseModel
+from typing import List, Optional, Any
+
+class CareerRow(BaseModel):
+    format: str
+    matches: int = 0
+    innings: int = 0
+    runs: int = 0
+    avg: float = 0
+    sr: float = 0
+    hundreds: int = 0
+    fifties: int = 0
+    highest: str = "0"
+    wickets: int = 0
+    economy: float = 0
+    bestBowl: str = "-"
+
+class BattlePredictRequest(BaseModel):
+    p1: str                                # ESPN Cricinfo ID
+    p2: str
+    name1: Optional[str] = ""
+    name2: Optional[str] = ""
+    p1Career: Optional[List[CareerRow]] = None
+    p2Career: Optional[List[CareerRow]] = None
+
+
+@app.post("/battle-predict")
+def battle_predict(req: BattlePredictRequest):
+    """
+    Run 6 independent ML models for a player vs player battle.
+
+    Returns per-model verdicts + judge summary with agreement rate.
+
+    Called by the Express api-server's battle route to populate
+    the algorithmVerdicts field in the battle response.
+
+    p1/p2: ESPN Cricinfo IDs (must be in the fitted pipeline).
+    p1Career/p2Career: career stats arrays from Postgres (used by
+    the Statistical Composite model; other 5 models use only pipeline data).
+    """
+    _check_ready()
+    career1 = [r.model_dump() for r in req.p1Career] if req.p1Career else None
+    career2 = [r.model_dump() for r in req.p2Career] if req.p2Career else None
+    result = pipeline.predict_battle(
+        id1=req.p1, id2=req.p2,
+        career1=career1, career2=career2,
+        name1=req.name1 or "", name2=req.name2 or "",
+    )
+    if result.get("error"):
+        raise HTTPException(status_code=404, detail=result["error"])
+    return result

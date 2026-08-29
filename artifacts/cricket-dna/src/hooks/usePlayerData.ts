@@ -10,17 +10,16 @@
 //
 // USAGE EXAMPLE:
 //   import { PLAYERS } from "@/data/mockData";
-//   import { usePlayerStats } from "@/hooks/usePlayerData";
+//   import { useArchetype } from "@/hooks/usePlayerData";
 //
 //   const mockPlayer = PLAYERS.find(p => p.id === "virat-kohli")!;
-//   const { data: player } = usePlayerStats(mockPlayer.cricInfoId, mockPlayer);
+//   const { data: archetype } = useArchetype(mockPlayer.id, mockPlayer.cricInfoId);
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useCallback } from "react";
 import {
   fetchPlayerStats,
-  fetchPlayers,
   searchPlayers,
   fetchKNNTwins,
   fetchConstellation,
@@ -53,78 +52,6 @@ const STALE = {
   search:      1000 * 60 * 5,          // 5m  — search index is stable
   battle:      1000 * 60 * 60,         // 1h  — battle data = career stats + moments
 };
-
-// ─── Player stats ─────────────────────────────────────────────────────────────
-
-/**
- * Full career stats for one player.
- * Pass the corresponding mockData player as `placeholder` for instant render.
- *
- * @param cricInfoId  ESPN Cricinfo player ID e.g. "253802"
- * @param placeholder Mock player from mockData.ts — shown while fetching
- */
-export function usePlayerStats(
-  cricInfoId: string | undefined,
-  placeholder?: typeof PLAYERS[0]
-) {
-  return useQuery({
-    queryKey: ["player", "stats", cricInfoId],
-    queryFn: () => fetchPlayerStats(cricInfoId!),
-    enabled: !!cricInfoId,
-    staleTime: STALE.careerStats,
-    placeholderData: placeholder
-      ? {
-          cricInfoId: placeholder.cricInfoId,
-          name: placeholder.name,
-          country: placeholder.country,
-          role: placeholder.role,
-          age: 0,
-          testStats: placeholder.testStats,
-          odiStats: placeholder.odiStats,
-          t20Stats: placeholder.t20Stats,
-          iplStats: placeholder.iplStats,
-          recentForm: [],
-        } as LivePlayerProfile
-      : undefined,
-  });
-}
-
-// ─── Player list ──────────────────────────────────────────────────────────────
-
-/**
- * Filtered player list. Falls back to filtered mockData while loading.
- */
-export function usePlayerList(params?: {
-  format?: "test" | "odi" | "t20";
-  cluster?: string;
-  search?: string;
-}) {
-  const mockFallback = useMemo<SearchResult[]>(() => {
-    let list = PLAYERS;
-    if (params?.cluster) list = list.filter((p) => p.archetypeId === params.cluster);
-    if (params?.search) {
-      const q = params.search.toLowerCase();
-      list = list.filter((p) => p.name.toLowerCase().includes(q));
-    }
-    return list.map((p) => ({
-      internalId: p.id,
-      name: p.name,
-      cricbuzzPlayerId: p.cricInfoId,
-      country: p.country,
-      flag: p.flag,
-      role: p.role,
-      archetypeId: p.archetypeId,
-      archetypeName: p.archetype,
-    }));
-  }, [params?.format, params?.cluster, params?.search]);
-
-  return useQuery({
-    queryKey: ["players", "list", params],
-    queryFn: () => fetchPlayers(params),
-    staleTime: STALE.search,
-    placeholderData: mockFallback,
-  });
-}
 
 // ─── Player search ────────────────────────────────────────────────────────────
 
@@ -349,24 +276,26 @@ export function useClusters() {
 
 /**
  * Full battle data for two players.
- * Uses cricInfoIds to fetch from the Cricinfo proxy.
- * While the request is in flight, BattleArena renders a loading state
- * (no placeholderData) and upgrades to the live response when it resolves.
+ * Sends internalIds (p.id) — the /api/battle route resolves players by
+ * internalId / cricbuzzPlayerId / name and returns the winner as an
+ * internalId, which BattleArena matches back against PLAYERS[].id. Sending
+ * cricInfoId (the ESPN id) here silently missed roster resolution, so battles
+ * fell back to an empty dynamic player and the results page showed zeros.
  *
- * @param p1  Player object from mockData (has cricInfoId)
- * @param p2  Player object from mockData (has cricInfoId)
+ * @param p1  Player object from mockData (has id)
+ * @param p2  Player object from mockData (has id)
  */
 export function useBattle(
   p1: typeof PLAYERS[0] | undefined,
   p2: typeof PLAYERS[0] | undefined,
   algorithms: string[] = ["xgboost", "random_forest"]
 ) {
-  const enabled = !!p1?.cricInfoId && !!p2?.cricInfoId && algorithms.length >= 2;
+  const enabled = !!p1?.id && !!p2?.id && algorithms.length >= 2;
 
   return useQuery({
-    queryKey: ["battle", p1?.cricInfoId, p2?.cricInfoId, algorithms.join(",")],
+    queryKey: ["battle", p1?.id, p2?.id, algorithms.join(",")],
     queryFn: async () => {
-      const raw = await fetchBattle(p1!.cricInfoId, p2!.cricInfoId, algorithms);
+      const raw = await fetchBattle(p1!.id, p2!.id, algorithms);
       return normalizeBattleData(raw);
     },
     enabled,
@@ -378,16 +307,18 @@ export function useBattle(
 
 /**
  * Statement moments only — cheaper than full battle fetch.
- * Use when rendering just the moments tab to avoid over-fetching.
+ * Takes internalIds: the /api/battle/moments route matches players by
+ * internal_id (and keys the hardcoded Kohli WC moment off "virat-kohli"),
+ * so the ESPN cricInfoId never resolved here.
  */
 export function useStatementMoments(
-  p1CricInfoId: string | undefined,
-  p2CricInfoId: string | undefined
+  p1InternalId: string | undefined,
+  p2InternalId: string | undefined
 ) {
   return useQuery({
-    queryKey: ["battle", "moments", p1CricInfoId, p2CricInfoId],
-    queryFn: () => fetchStatementMoments(p1CricInfoId!, p2CricInfoId!),
-    enabled: !!p1CricInfoId && !!p2CricInfoId,
+    queryKey: ["battle", "moments", p1InternalId, p2InternalId],
+    queryFn: () => fetchStatementMoments(p1InternalId!, p2InternalId!),
+    enabled: !!p1InternalId && !!p2InternalId,
     staleTime: STALE.battle,
   });
 }

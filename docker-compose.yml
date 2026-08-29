@@ -8,7 +8,9 @@ services:
       POSTGRES_USER: cricket_admin
       POSTGRES_PASSWORD: cricket_secret_2024
     ports:
-      - "5432:5432"
+      # 5433 on the host: a native PostgreSQL Windows service already
+      # occupies 5432 and intercepts connections meant for this container.
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./artifacts/api-server/src/db/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql

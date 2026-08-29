@@ -197,6 +197,51 @@ playersRouter.get("/", (_req: Request, res: Response) => {
   res.json(list);
 });
 
+// GET /api/players/export — Download scraper findings as CSV
+playersRouter.get("/export", async (_req: Request, res: Response) => {
+  try {
+    const stats = await query<{
+      player_id: string;
+      internal_id: string;
+      name: string;
+      format: string;
+      matches: number;
+      runs: number;
+      avg: number;
+      sr: number;
+      hundreds: number;
+      fifties: number;
+      highest: string;
+      wickets: number;
+      economy: number;
+      best_bowl: string;
+    }>(
+      `SELECT
+         p.id as player_id, p.internal_id, p.name,
+         s.format, s.matches, s.runs, s.avg, s.sr, s.hundreds, s.fifties, s.highest, s.wickets, s.economy, s.best_bowl
+       FROM players p
+       JOIN player_career_stats s ON p.id = s.player_id
+       ORDER BY p.name, s.format`
+    );
+
+    const headers = [
+      "internal_id", "name", "format", "matches", "runs", "avg", "sr",
+      "hundreds", "fifties", "highest", "wickets", "economy", "best_bowl"
+    ];
+
+    const csvRows = stats.map((r) => [
+      r.internal_id, r.name, r.format, r.matches, r.runs, r.avg, r.sr,
+      r.hundreds, r.fifties, r.highest, r.wickets, r.economy, r.best_bowl
+    ].map(String).join(","));
+
+    res.header("Content-Type", "text/csv");
+    res.attachment("cricket_dna_scraper_findings.csv");
+    res.send([headers.join(","), ...csvRows].join("\n"));
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // GET /api/players/search?q=kohli
 playersRouter.get("/search", async (req: Request, res: Response) => {
   const q = ((req.query.q as string) ?? "").trim();

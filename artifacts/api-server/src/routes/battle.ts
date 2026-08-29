@@ -1,10 +1,10 @@
 import { Router, Request, Response, type IRouter } from "express";
-import { searchPlayer } from "../services/cricbuzz";
+import { searchPlayer, getPlayerStatsWithFallback } from "../services/cricbuzz";
 import { cacheGet, cacheSet, publish, TTL, CHANNELS, redis } from "../db/redis";
 import { query, transaction } from "../db/postgres";
 import { logger } from "../utils/logger";
 import { PLAYER_ROSTER, getCricbuzzImageUrl } from "../models/player";
-import { loadPlayerSnapshot, type PlayerSnapshot } from "../lib/snapshot";
+import { loadPlayerSnapshot, upsertCareerStats, type PlayerSnapshot } from "../lib/snapshot";
 
 export const battleRouter: IRouter = Router();
 
@@ -18,19 +18,31 @@ async function persistDynamicPlayer(player: {
   flag: string;
   role: string;
 }): Promise<void> {
+  // Use DO UPDATE so that if a player was seeded via migrate (by internal_id)
+  // and also arrives via a different lookup path, we update rather than crash
+  // with a unique-constraint violation on cricbuzz_player_id.
   await query(
     `INSERT INTO players (internal_id, cricbuzz_player_id, name, country, flag, role, archetype_id)
      VALUES ($1,$2,$3,$4,$5,$6,'A')
-     ON CONFLICT (internal_id) DO NOTHING`,
+     ON CONFLICT (internal_id) DO UPDATE SET
+       cricbuzz_player_id = COALESCE(EXCLUDED.cricbuzz_player_id, players.cricbuzz_player_id),
+       name               = EXCLUDED.name,
+       updated_at         = NOW()`,
     [
       player.internalId,
-      player.cricbuzzPlayerId,
+      player.cricbuzzPlayerId || null,
       player.name,
       player.country,
       player.flag,
       player.role,
     ]
-  );
+  ).catch((e: any) => {
+    // cricbuzz_player_id unique constraint can fire if the same Cricbuzz ID
+    // is already on a different internal_id row. Safe to ignore — the existing
+    // row is the canonical one and the battle can still proceed.
+    if (e.message?.includes('cricbuzz_player_id')) return;
+    throw e;
+  });
 
   await query(
     `INSERT INTO elo_ratings (player_id, rating, format)
@@ -56,6 +68,7 @@ async function resolvePlayer(idOrName: string): Promise<{
     (player) =>
       player.internalId === normalized ||
       player.cricbuzzPlayerId === normalized ||
+      player.espnId === normalized ||               // ESPN id — the frontend's cricInfoId space
       player.name.toLowerCase() === normalized.toLowerCase()
   );
   if (known) return known;
@@ -119,6 +132,85 @@ async function resolvePlayer(idOrName: string): Promise<{
   return player;
 }
 
+// ── On-demand stats backfill (free scraper) ───────────────────────────────────
+//
+// The documented data-flow rule is "user routes read the DB, external calls
+// happen only in the refresher." That keeps *paid* RapidAPI calls out of the
+// request path. But on a fresh deploy the refresher round-robins ~1 player /
+// 12h, so the two players in a brand-new battle often have NO career rows yet
+// — and the results page then renders zeros / the frontend falls back to mock.
+//
+// This helper closes that gap for exactly the two players being compared,
+// using the FREE Cricbuzz scraper (scraper-first; RapidAPI only if a key is
+// set and the scraper fails). Scoped to two players, cached for an hour by the
+// caller, and fully degradable — any failure just leaves `hasStats` false and
+// the existing "scouting report in progress" placeholder shows.
+async function ensureSnapshotStats(
+  roster: { internalId: string; cricbuzzPlayerId: string },
+  snap: PlayerSnapshot | null,
+): Promise<PlayerSnapshot | null> {
+  if (snap?.hasStats) return snap;                    // already have real stats
+  const cbId = roster.cricbuzzPlayerId?.trim();
+  if (!cbId) return snap;                             // nothing to scrape with
+
+  try {
+    const { source, stats } = await getPlayerStatsWithFallback(cbId);
+    if (!stats.career.length) return snap;            // Cricbuzz genuinely has no data
+
+    // loadPlayerSnapshot doesn't expose the DB uuid, so resolve it for the upsert.
+    const rows = await query<{ id: string }>(
+      "SELECT id FROM players WHERE internal_id = $1 OR cricbuzz_player_id = $2 LIMIT 1",
+      [roster.internalId, cbId],
+    );
+    if (!rows[0]) return snap;                         // player row missing (roster is seeded, so rare)
+
+    await upsertCareerStats(rows[0].id, stats.career, source);
+    logger.info("[battle] lazy stats backfill", { player: roster.internalId, source, formats: stats.career.length });
+
+    const fresh = await loadPlayerSnapshot(roster.internalId);
+    return fresh?.hasStats ? fresh : snap;
+  } catch (e) {
+    // Scraper/ML cold or unreachable — degrade to the pending placeholder.
+    logger.warn("[battle] lazy stats fetch failed", { cbId, error: (e as Error).message });
+    return snap;
+  }
+}
+
+// ── All-format stat verdict ───────────────────────────────────────────────────
+//
+// The results page compares the two players across TEST / ODI / T20I. The
+// battle verdict must be decided on the SAME all-format basis, not on ODI
+// average alone (the old behaviour). We score each format the player has
+// actually played — average is the headline, strike rate and run volume break
+// ties — then sum across formats and tally per-format wins for the narrative.
+const VERDICT_FORMATS = ["TEST", "ODI", "T20I"] as const;
+
+function formatBattingScore(c: SnapshotCareerLike | undefined): number {
+  if (!c || c.matches <= 0) return 0;
+  return c.avg + c.sr * 0.1 + Math.min(c.runs, 20000) * 0.001;
+}
+
+interface SnapshotCareerLike { format: string; matches: number; runs: number; avg: number; sr: number }
+
+function allFormatVerdict(
+  career1: SnapshotCareerLike[] | undefined,
+  career2: SnapshotCareerLike[] | undefined,
+): { score1: number; score2: number; wins1: string[]; wins2: string[] } {
+  let score1 = 0, score2 = 0;
+  const wins1: string[] = [], wins2: string[] = [];
+  for (const f of VERDICT_FORMATS) {
+    const c1 = career1?.find((c) => c.format === f);
+    const c2 = career2?.find((c) => c.format === f);
+    const s1 = formatBattingScore(c1);
+    const s2 = formatBattingScore(c2);
+    if (s1 === 0 && s2 === 0) continue;               // neither side has data for this format
+    score1 += s1;
+    score2 += s2;
+    if (s1 >= s2) wins1.push(f); else wins2.push(f);
+  }
+  return { score1, score2, wins1, wins2 };
+}
+
 // ── Core battle computation ───────────────────────────────────────────────────
 
 async function computeBattle(p1Id: string, p2Id: string, algorithms: string[] = ["xgboost", "random_forest"]) {
@@ -127,14 +219,25 @@ async function computeBattle(p1Id: string, p2Id: string, algorithms: string[] = 
     resolvePlayer(p2Id),
   ]);
 
-  const cacheKey = `battle:${p1Id}:${p2Id}`;
+  // Include the algorithm selection in the key — otherwise two battles that
+  // differ only by chosen algorithms collide and serve each other's result.
+  const cacheKey = `battle:${p1Id}:${p2Id}:${[...algorithms].sort().join(",")}`;
   const cached = await cacheGet(cacheKey);
   if (cached) return cached;
 
-  // ── Load snapshots from Postgres (DB-only — no external calls here)
-  const [snap1, snap2] = await Promise.all([
+  // ── Load snapshots from Postgres (DB-first)
+  let [snap1, snap2] = await Promise.all([
     loadPlayerSnapshot(roster1.internalId),
     loadPlayerSnapshot(roster2.internalId),
+  ]);
+
+  // If either player has no real career rows yet (fresh deploy, refresher
+  // hasn't reached them, bootstrap skipped), backfill on-demand via the FREE
+  // scraper so the results page compares REAL data. Scoped to these two
+  // players; degrades to the pending placeholder on any failure.
+  [snap1, snap2] = await Promise.all([
+    ensureSnapshotStats(roster1, snap1),
+    ensureSnapshotStats(roster2, snap2),
   ]);
 
   const statsPending = (snap: PlayerSnapshot | null) => !snap?.hasStats;
@@ -145,13 +248,11 @@ async function computeBattle(p1Id: string, p2Id: string, algorithms: string[] = 
   const stats1 = snap1 ? { playerId: snap1.cricbuzzPlayerId, playerName: snap1.name, country: snap1.country, role: snap1.role, battingStyle: "-", bowlingStyle: "-", career: snap1.career } : null;
   const stats2 = snap2 ? { playerId: snap2.cricbuzzPlayerId, playerName: snap2.name, country: snap2.country, role: snap2.role, battingStyle: "-", bowlingStyle: "-", career: snap2.career } : null;
 
-  // ── ML: real DNA data via the cluster + similarity proxies
-  // (No /battle/predict endpoint exists on the ML service. We pull each
-  // player's archetype + dnaScore from /cluster, and the 20-dim cosine
-  // similarity from /similarity, which is what /battle/predict would have
-  // computed anyway. espnId is what the ML pipeline is keyed on — using
-  // cricbuzzPlayerId here was the bug that silently fell back to the ODI
-  // average verdict.)
+  // ── ML: call the 6-model battle-predict endpoint + cluster metadata
+  // POST /battle-predict runs K-Means, cosine DNA, DBSCAN, PCA, format
+  // versatility, and statistical composite — returning per-model verdicts and
+  // a judge that aggregates them by majority vote.
+  // /cluster calls are kept for archetype metadata (name, color, vector).
   let mlResult: any = null;
   const mlId1 = roster1.espnId ?? roster1.cricbuzzPlayerId;
   const mlId2 = roster2.espnId ?? roster2.cricbuzzPlayerId;
@@ -159,42 +260,69 @@ async function computeBattle(p1Id: string, p2Id: string, algorithms: string[] = 
   if (mlIdsAvailable) {
     try {
       // 60s: covers ml-service cold-start on Render free tier (30-50s).
-      const [c1Res, c2Res, simRes] = await Promise.all([
+      const [c1Res, c2Res, battleRes] = await Promise.all([
         fetch(`${ML_URL}/cluster/${mlId1}`, { signal: AbortSignal.timeout(60_000) }),
         fetch(`${ML_URL}/cluster/${mlId2}`, { signal: AbortSignal.timeout(60_000) }),
-        fetch(`${ML_URL}/similarity?p1=${mlId1}&p2=${mlId2}`, { signal: AbortSignal.timeout(60_000) }),
+        fetch(`${ML_URL}/battle-predict`, {
+          method:  "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            p1:       mlId1,
+            p2:       mlId2,
+            name1:    roster1.name,
+            name2:    roster2.name,
+            p1Career: stats1?.career ?? [],
+            p2Career: stats2?.career ?? [],
+          }),
+          signal: AbortSignal.timeout(60_000),
+        }),
       ]);
       const c1: any = c1Res.ok ? await c1Res.json() : null;
       const c2: any = c2Res.ok ? await c2Res.json() : null;
-      const sim: any = simRes.ok ? await simRes.json() : null;
+      const battle: any = battleRes.ok ? await battleRes.json() : null;
 
-      const dnaSimilarity = typeof sim?.similarity === "number" ? sim.similarity : null;
+      const models: any[]  = battle?.models ?? [];
+      const judge: any     = battle?.judge ?? null;
 
-      if (dnaSimilarity !== null) {
-        // Winner = player with the higher dnaScore (more "self-actualised"
-        // archetype). Ties go to the player with the higher similarity to
-        // the other — i.e. the more "central" member of the shared archetype.
-        const score1 = c1?.dnaScore ?? 50;
-        const score2 = c2?.dnaScore ?? 50;
-        const winnerByDna = score1 === score2
-          ? (dnaSimilarity >= 50 ? p1Id : p2Id)
-          : (score1 > score2 ? p1Id : p2Id);
-        mlResult = {
-          available:     true,
-          dnaSimilarity,
-          predictedWinner: winnerByDna,
-          confidence:    Math.round(Math.abs(score1 - score2) * 2 * 10) / 10,
-          momentumP1:    score1,
-          momentumP2:    score2,
-          xgboostScore:  dnaSimilarity,
-          archetype1:    c1?.archetype,
-          archetype2:    c2?.archetype,
-          dnaScore1:     score1,
-          dnaScore2:     score2,
-        };
-      }
+      // Extract DNA similarity from the cosine_dna model for display
+      const cosineMod = models.find((m: any) => m.id === "cosine_dna");
+      const dnaSimilarity: number | null = cosineMod?.dnaSimilarity ?? null;
+
+      const score1 = c1?.dnaScore ?? 50;
+      const score2 = c2?.dnaScore ?? 50;
+
+      // Judge winner takes priority; fall back to DNA score comparison
+      const predictedWinnerId = judge?.winner === mlId1 ? p1Id
+        : judge?.winner === mlId2 ? p2Id
+        : score1 >= score2 ? p1Id : p2Id;
+
+      mlResult = {
+        available:       true,
+        dnaSimilarity,
+        predictedWinner: predictedWinnerId,
+        confidence:      judge ? Math.round(judge.agreement_rate) : Math.round(Math.abs(score1 - score2) * 2),
+        momentumP1:      score1,
+        momentumP2:      score2,
+        xgboostScore:    dnaSimilarity,
+        // Cluster metadata (for archetype display on p1/p2 cards)
+        archetype1:      c1?.archetype,
+        archetype2:      c2?.archetype,
+        archetypeId1:    c1?.archetypeId,
+        archetypeId2:    c2?.archetypeId,
+        color1:          c1?.color,
+        color2:          c2?.color,
+        dnaScore1:       score1,
+        dnaScore2:       score2,
+        playerVector1:   c1?.playerVector ?? null,
+        playerVector2:   c2?.playerVector ?? null,
+        isOutlier1:      c1?.isOutlier ?? false,
+        isOutlier2:      c2?.isOutlier ?? false,
+        // 6-model results
+        algorithms:      models,
+        judge,
+      };
     } catch (e) {
-      logger.warn("[battle] ML cluster/similarity proxy failed", { error: (e as Error).message });
+      logger.warn("[battle] ML battle-predict failed", { error: (e as Error).message });
     }
   } else {
     logger.warn("[battle] ML skipped — missing espnId", {
@@ -203,14 +331,19 @@ async function computeBattle(p1Id: string, p2Id: string, algorithms: string[] = 
     });
   }
 
-  // ── Stat-based comparison (fallback when ML is unavailable)
-  const odiAvg1 = stats1?.career?.find((c) => c.format === "ODI")?.avg ?? 0;
-  const odiAvg2 = stats2?.career?.find((c) => c.format === "ODI")?.avg ?? 0;
-  const gap = Math.abs(odiAvg1 - odiAvg2).toFixed(1);
-  const statWinner = odiAvg1 >= odiAvg2 ? p1Id : p2Id;
+
+  // ── Stat-based comparison across ALL formats (TEST/ODI/T20I)
+  // This is the verdict the results page renders, so it must reflect every
+  // format shown in the comparison table — not ODI average alone.
+  const verdict = allFormatVerdict(stats1?.career, stats2?.career);
+  const statWinner = verdict.score1 >= verdict.score2 ? p1Id : p2Id;
+  const winnerName = statWinner === p1Id ? roster1.name : roster2.name;
+  const winnerFormats = statWinner === p1Id ? verdict.wins1 : verdict.wins2;
+  const totalFormats = verdict.wins1.length + verdict.wins2.length;
+  const gap = Math.abs(verdict.score1 - verdict.score2).toFixed(1);
 
     // ── Gemini API narrative generation
-    let narrative = buildStatNarrative(roster1.name, roster2.name, odiAvg1, odiAvg2, mlResult);
+    let narrative = buildStatNarrative(roster1.name, roster2.name, verdict.score1, verdict.score2, mlResult);
     try {
     narrative = await generateNarrative(roster1.name, roster2.name, stats1, stats2, mlResult);
     } catch {
@@ -232,8 +365,15 @@ async function computeBattle(p1Id: string, p2Id: string, algorithms: string[] = 
       country:          roster1.country,
       flag:             roster1.flag,
       role:             roster1.role,
-      archetypeId:      roster1.archetypeId,
-      archetypeName:    roster1.archetypeName,
+      // Prefer the LIVE archetype from the ML cluster call; only fall
+      // back to the static roster assignment when ML was unreachable
+      // (espnId missing, cold-start timeout, etc).
+      archetypeId:      mlResult?.archetypeId1 ?? roster1.archetypeId,
+      archetypeName:    mlResult?.archetype1   ?? roster1.archetypeName,
+      archetypeColor:   mlResult?.color1       ?? null,
+      dnaScore:         mlResult?.dnaScore1    ?? null,
+      playerVector:     mlResult?.playerVector1 ?? null,
+      isOutlier:        mlResult?.isOutlier1   ?? false,
       imageUrl:         getCricbuzzImageUrl(roster1.cricbuzzPlayerId),
       stats:            stats1,
     },
@@ -244,8 +384,12 @@ async function computeBattle(p1Id: string, p2Id: string, algorithms: string[] = 
       country:          roster2.country,
       flag:             roster2.flag,
       role:             roster2.role,
-      archetypeId:      roster2.archetypeId,
-      archetypeName:    roster2.archetypeName,
+      archetypeId:      mlResult?.archetypeId2 ?? roster2.archetypeId,
+      archetypeName:    mlResult?.archetype2   ?? roster2.archetypeName,
+      archetypeColor:   mlResult?.color2       ?? null,
+      dnaScore:         mlResult?.dnaScore2    ?? null,
+      playerVector:     mlResult?.playerVector2 ?? null,
+      isOutlier:        mlResult?.isOutlier2   ?? false,
       imageUrl:         getCricbuzzImageUrl(roster2.cricbuzzPlayerId),
       stats:            stats2,
     },
@@ -262,9 +406,11 @@ async function computeBattle(p1Id: string, p2Id: string, algorithms: string[] = 
     statComparison: {
       winner:      statWinner,
       gap,
-      reason: gap === "0.0"
-        ? "Statistically identical. The DNA decides."
-        : `${statWinner === p1Id ? roster1.name : roster2.name} leads by ${gap} in ODI average.`,
+      reason: totalFormats === 0
+        ? "Full stats are still syncing — verdict will sharpen once career data lands."
+        : verdict.wins1.length > 0 && verdict.wins2.length > 0
+          ? `${winnerName} takes the all-format verdict, leading in ${winnerFormats.join(" & ")} of ${totalFormats} formats compared.`
+          : `${winnerName} sweeps all ${totalFormats} format${totalFormats > 1 ? "s" : ""} (${winnerFormats.join(", ")}).`,
     },
     algorithmVerdicts: mlResult?.algorithms ?? [],
     judge: mlResult?.judge ?? null,

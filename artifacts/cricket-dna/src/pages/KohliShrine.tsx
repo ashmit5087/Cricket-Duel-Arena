@@ -322,10 +322,6 @@ function StatWall({ currentODIAvg, liveStats }: { currentODIAvg: number; liveSta
     }
   }, [inView]);
 
-  // All values sourced from the live snapshot when present, with sensible
-  // "—" placeholders while the data is loading. The previous hardcoded
-  // values (80 centuries, 500 matches, 12040 Test runs) were stale and
-  // disconnected from the scraper output.
   const odiHundreds = liveStats?.odiHundreds ?? 0;
   const odiMatches  = liveStats?.odiMatches  ?? 0;
   const testRuns    = liveStats?.testRuns    ?? 0;

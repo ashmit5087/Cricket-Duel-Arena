@@ -66,10 +66,11 @@ export default function Constellation() {
   const SVG_H = 440;
 
   const mergedPlayers = useMemo(() => {
-    const byId = new Map(PLAYERS.map((p) => [p.id, p]));
+    const byId = new Map(PLAYERS.map((p) => [p.cricInfoId || p.id, p]));
     const merged = (constellationData ?? [])
       .map((point) => {
-        const base = byId.get(point.id);
+        // Point from ML service uses cricInfoId for point.id if it's there
+        const base = byId.get(point.cricInfoId || point.id);
         if (!base) return null;
         return { ...base, x: point.x, y: point.y, dnaScore: point.dnaScore };
       })

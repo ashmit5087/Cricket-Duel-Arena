@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { PLAYERS, ARCHETYPES } from "@/data/mockData";
 import { usePlayerSearch, useKNNTwins, usePrefetchPlayer } from "@/hooks/usePlayerData";
 import type { SearchResult } from "@/lib/api";
+import { fetchPlayerStats } from "@/lib/api";
+import { useQuery } from "@tanstack/react-query";
 
 const PLACEHOLDER_WORDS = ["Jasprit Bumrah...", "Virat Kohli...", "MS Dhoni...", "Sachin Tendulkar...", "Rohit Sharma..."];
 
@@ -46,6 +48,15 @@ export default function DNASearch() {
     selectedPlayer?.internalId,
     selectedPlayer?.cricbuzzPlayerId
   );
+  
+  // Custom hook usage instead of modifying usePlayerData.ts for one hook
+  const { data: liveStats } = useQuery({
+    queryKey: ["player", "stats", selectedPlayer?.cricbuzzPlayerId],
+    queryFn: () => fetchPlayerStats(selectedPlayer!.cricbuzzPlayerId!),
+    enabled: !!selectedPlayer?.cricbuzzPlayerId,
+    staleTime: 1000 * 60 * 60 * 24, // 24h
+  });
+
   const prefetch = usePrefetchPlayer();
 
   const seededPlayers = [
@@ -177,10 +188,10 @@ export default function DNASearch() {
 
                 <div className="grid grid-cols-4 gap-4 text-center border-t border-white/5 pt-4">
                   {[
-                    { v: selectedMock?.odiStats?.hundreds ?? "-", l: "ODI 100s" },
-                    { v: selectedMock?.odiStats?.avg?.toFixed(1) ?? "-", l: "ODI Avg" },
+                    { v: liveStats?.odiStats?.hundreds ?? selectedMock?.odiStats?.hundreds ?? "-", l: "ODI 100s" },
+                    { v: liveStats?.odiStats?.avg?.toFixed(1) ?? selectedMock?.odiStats?.avg?.toFixed(1) ?? "-", l: "ODI Avg" },
                     { v: selectedMock?.dnaScore ?? "-", l: "DNA Score" },
-                    { v: selectedMock?.odiStats?.runs?.toLocaleString() ?? "-", l: "ODI Runs" },
+                    { v: liveStats?.odiStats?.runs?.toLocaleString() ?? selectedMock?.odiStats?.runs?.toLocaleString() ?? "-", l: "ODI Runs" },
                   ].map((s) => (
                     <div key={s.l}>
                       <div className="text-xl font-bold text-[#d4a500]">{s.v}</div>

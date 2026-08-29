@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
+import { useLiveTicker } from "@/hooks/usePlayerData";
 
 const links = [
   { href: "/constellation", label: "Constellation" },
@@ -36,6 +37,11 @@ function HamburgerIcon({ open }: { open: boolean }) {
 export function Navbar() {
   const [location] = useLocation();
   const [open, setOpen] = useState(false);
+  // Sitewide real-time indicator — same scraper-backed query Home.tsx uses,
+  // React Query dedupes/caches it so this doesn't add an extra network hit
+  // when Home is also mounted. Shows on every page, not just the Hero.
+  const { data: ticker } = useLiveTicker();
+  const liveCount = ticker?.count ?? 0;
 
   // Close the menu whenever the route changes
   useEffect(() => {
@@ -105,14 +111,31 @@ export function Navbar() {
         </div>
 
         {/* Mobile burger */}
-        <button
-          aria-label={open ? "Close menu" : "Open menu"}
-          aria-expanded={open}
-          onClick={() => setOpen((v) => !v)}
-          className="md:hidden p-2 -mr-2 cursor-pointer"
-        >
-          <HamburgerIcon open={open} />
-        </button>
+        <div className="flex items-center gap-3">
+          {liveCount > 0 && (
+            <Link href="/">
+              <div
+                className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 text-[10px] uppercase tracking-wider cursor-pointer border"
+                style={{ borderColor: "rgba(192,57,43,0.35)", color: "#f0e6d8", background: "rgba(192,57,43,0.08)" }}
+                data-testid="navbar-live-indicator"
+              >
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="absolute inline-flex h-full w-full rounded-full bg-[#c0392b] opacity-75 animate-ping" />
+                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#c0392b]" />
+                </span>
+                {liveCount} Live
+              </div>
+            </Link>
+          )}
+          <button
+            aria-label={open ? "Close menu" : "Open menu"}
+            aria-expanded={open}
+            onClick={() => setOpen((v) => !v)}
+            className="md:hidden p-2 -mr-2 cursor-pointer"
+          >
+            <HamburgerIcon open={open} />
+          </button>
+        </div>
       </nav>
 
       {/* Mobile menu overlay */}

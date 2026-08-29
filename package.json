@@ -2,10 +2,12 @@
   "name": "workspace",
   "version": "0.0.0",
   "license": "MIT",
-  "scripts": {
-  "preinstall": "node -e \"const fs=require('fs');['package-lock.json','yarn.lock'].forEach(f=>{try{fs.unlinkSync(f)}catch{}})\" "
-},
   "private": true,
+  "scripts": {
+    "preinstall": "node -e \"const fs=require('fs');['package-lock.json','yarn.lock'].forEach(f=>{try{fs.unlinkSync(f)}catch{}})\"",
+    "dev": "npm run dev --workspace=artifacts/api-server & npm run dev --workspace=artifacts/cricket-dna",
+    "api": "npm run dev --workspace=artifacts/api-server"
+  },
   "devDependencies": {
     "typescript": "~5.9.2",
     "prettier": "^3.8.1"

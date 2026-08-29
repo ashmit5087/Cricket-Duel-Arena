@@ -10,6 +10,40 @@ import { pool, query, transaction } from "./postgres";
 import { PLAYER_ROSTER, getCricbuzzImageUrl } from "../models/player";
 import { logger } from "../utils/logger";
 
+// Players whose career is final — never re-fetch stats to save scraper quota.
+// ESPN IDs (espnId) used as the canonical key since they match PLAYER_ROSTER.
+const RETIRED_ESPN_IDS = new Set([
+  "35320",  // Sachin Tendulkar
+  "28114",  // Rahul Dravid
+  "30176",  // Anil Kumble
+  "13552",  // Shane Warne
+  "4188",   // Glenn McGrath
+  "44936",  // AB de Villiers
+  "7133",   // Ricky Ponting
+  "49536",  // Lasith Malinga
+  "50710",  // Kumar Sangakkara
+  "52337",  // Brian Lara
+  "51880",  // Chris Gayle
+  "45789",  // Jacques Kallis
+  "28779",  // Sourav Ganguly
+  "35263",  // Virender Sehwag
+  "43209",  // Harbhajan Singh
+  "43429",  // Imran Khan
+  "44828",  // Dale Steyn
+  "8917",   // Wasim Akram
+  "40439",  // Younis Khan
+  "43290",  // Shahid Afridi
+  "43263",  // Shoaib Akhtar
+  "8166",   // Brett Lee
+  "48749",  // Mahela Jayawardene
+  "42656",  // Hashim Amla
+  "84985",  // Brendon McCullum
+  "49636",  // Muttiah Muralitharan
+  "31905",  // Adam Gilchrist
+  "28081",  // MS Dhoni (retired from Tests/ODIs/T20Is)
+]);
+
+
 async function applySchema(): Promise<void> {
   // schema.sql lives next to this file at src/db/schema.sql
   // After tsc it compiles to dist/db/ so __dirname points there;
@@ -50,11 +84,12 @@ async function migrate() {
     // ── Upsert every player in the roster ──────────────────────────────────────
 
     for (const p of PLAYER_ROSTER) {
+      const isRetired = p.espnId ? RETIRED_ESPN_IDS.has(p.espnId) : false;
       await client.query(
         `INSERT INTO players
            (internal_id, cricbuzz_player_id, name, country, flag, role,
-            archetype_id, archetype_name, image_url)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+            archetype_id, archetype_name, image_url, is_retired)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
          ON CONFLICT (internal_id) DO UPDATE SET
            cricbuzz_player_id = EXCLUDED.cricbuzz_player_id,
            name               = EXCLUDED.name,
@@ -64,6 +99,7 @@ async function migrate() {
            archetype_id       = EXCLUDED.archetype_id,
            archetype_name     = EXCLUDED.archetype_name,
            image_url          = EXCLUDED.image_url,
+           is_retired         = EXCLUDED.is_retired,
            updated_at         = NOW()`,
         [
           p.internalId,
@@ -75,6 +111,7 @@ async function migrate() {
           p.archetypeId,
           p.archetypeName,
           getCricbuzzImageUrl(p.cricbuzzPlayerId),
+          isRetired,
         ]
       );
     }
@@ -160,7 +197,8 @@ async function migrate() {
       ALTER TABLE players
         ADD COLUMN IF NOT EXISTS recent_form JSONB,
         ADD COLUMN IF NOT EXISTS radar_axes JSONB,
-        ADD COLUMN IF NOT EXISTS pending_refresh BOOLEAN NOT NULL DEFAULT FALSE
+        ADD COLUMN IF NOT EXISTS pending_refresh BOOLEAN NOT NULL DEFAULT FALSE,
+        ADD COLUMN IF NOT EXISTS is_retired BOOLEAN NOT NULL DEFAULT FALSE
     `);
 
     logger.info("[migrate] players snapshot columns ensured");

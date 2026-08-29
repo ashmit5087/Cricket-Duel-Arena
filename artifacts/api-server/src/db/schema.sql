@@ -30,9 +30,13 @@ CREATE TABLE IF NOT EXISTS players (
   aura_label          TEXT DEFAULT 'Rising',       -- Ice Cold | Inferno Mode | Chase Beast | etc.
   aura_score          NUMERIC(5,2) DEFAULT 50,
   image_url           TEXT,
+  is_retired          BOOLEAN NOT NULL DEFAULT FALSE,   -- TRUE = career final, never re-fetch
   created_at          TIMESTAMPTZ DEFAULT NOW(),
   updated_at          TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Self-heal for upgraded DBs
+ALTER TABLE players ADD COLUMN IF NOT EXISTS is_retired BOOLEAN NOT NULL DEFAULT FALSE;
 
 CREATE INDEX IF NOT EXISTS idx_players_internal_id ON players(internal_id);
 CREATE INDEX IF NOT EXISTS idx_players_name_trgm ON players USING GIN(name gin_trgm_ops);

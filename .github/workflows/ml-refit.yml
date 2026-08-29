@@ -1,0 +1,22 @@
+name: Weekly ML Refit
+
+on:
+  schedule:
+    # Runs at 02:00 UTC every Sunday
+    - cron: '0 2 * * 0'
+  workflow_dispatch: # Allow manual trigger from GitHub UI
+
+jobs:
+  refit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call ML Refit Endpoint
+        run: |
+          echo "Triggering ML pipeline refit..."
+          # Render free tier might sleep, so give it up to 5 mins to respond
+          # The ML_REFIT_URL should be set in GitHub repository secrets
+          # e.g., https://cricket-dna-ml.onrender.com/refit
+          curl -X POST "${{ secrets.ML_REFIT_URL }}" \
+               -H "Content-Type: application/json" \
+               --max-time 300 \
+               --fail || echo "Warning: curl failed, but not failing the workflow to avoid spam. Ensure ML service is reachable."

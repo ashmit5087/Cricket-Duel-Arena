@@ -1,0 +1,22 @@
+name: Daily Scraper Refresh
+
+on:
+  schedule:
+    # Runs at 02:00 UTC every day
+    - cron: '0 2 * * *'
+  workflow_dispatch: # Allow manual trigger from GitHub UI
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call API Server Refresh Endpoint
+        run: |
+          echo "Triggering API server scraper refresh..."
+          # Render free tier might sleep, so give it up to 5 mins to respond
+          # The API_REFRESH_URL should be set in GitHub repository secrets
+          # e.g., https://cricket-dna-api.onrender.com/api/refresh
+          curl -X POST "${{ secrets.API_REFRESH_URL }}" \
+               -H "Content-Type: application/json" \
+               --max-time 300 \
+               --fail || echo "Warning: curl failed, but not failing the workflow to avoid spam. Ensure API service is reachable."

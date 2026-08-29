@@ -329,25 +329,8 @@ export async function getMatchScorecard(matchId: string): Promise<CricbuzzScorec
   return { matchId, matchType: data?.matchHeader?.matchFormat ?? "T20", innings };
 }
 
-/** Live commentary for a match — latest 10 events */
-export async function getLiveCommentary(matchId: string): Promise<CricbuzzCommentary[]> {
-  const data = await rateLimitedFetch(`${BASE_URL}/mcenter/v1/${matchId}/comm`);
-
-  return (data?.commentaryList ?? []).slice(0, 10).map((c: any) => ({
-    matchId,
-    ballIndex: c.ballNbr ?? 0,
-    over:      Math.floor(c.overNumber ?? 0),
-    ball:      c.ballNbr ?? 0,
-    runs:      c.batsmanStriker?.runs ?? 0,
-    isWicket:  c.wicket ?? false,
-    text:      c.commText ?? "",
-    bowler:    c.bowlerStriker?.bowlName ?? "Unknown",
-    batsman:   c.batsmanStriker?.batName ?? "Unknown",
-  }));
-}
-
 /** Career stats for a player */
-export async function getPlayerStats(cricbuzzPlayerId: string): Promise<CricbuzzPlayerStats> {
+async function getPlayerStats(cricbuzzPlayerId: string): Promise<CricbuzzPlayerStats> {
   const [info, batting, bowling] = await Promise.allSettled([
     rateLimitedFetch(`${BASE_URL}/stats/v1/player/${cricbuzzPlayerId}`),
     rateLimitedFetch(`${BASE_URL}/stats/v1/player/${cricbuzzPlayerId}/batting`),
@@ -429,7 +412,7 @@ export async function searchPlayer(name: string): Promise<{ id: string; name: st
 // (bootstrap, refresher) can record stats_source on each row.
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type StatsSource = "scraper" | "rapidapi";
+export type StatsSource = "scraper" | "cricinfo" | "rapidapi";
 
 export interface PlayerStatsWithSource {
   source: StatsSource;
@@ -485,22 +468,90 @@ function isValidScraperResult(s: CricbuzzPlayerStats): boolean {
   return s.career.some((c) => c.matches > 0);
 }
 
+/**
+ * Fetch career stats from the ESPN Cricinfo scraper endpoint on the ML service.
+ * The ML service's /scrape/cricinfo/player-stats/{id} endpoint uses
+ * cricinfo_loader.fetch_one() which works reliably from Render datacenter IPs
+ * (unlike the willow-static.cricbuzz.com endpoint which returns 404 from cloud IPs).
+ *
+ * Returns null if the ML service is unreachable or returns no data.
+ */
+async function fetchFromCricinfoScraper(
+  cricbuzzPlayerId: string
+): Promise<CricbuzzPlayerStats | null> {
+  const ML_URL = process.env.ML_URL ?? "http://localhost:8000";
+  try {
+    const res = await fetch(
+      `${ML_URL}/scrape/cricinfo/player-stats/${cricbuzzPlayerId}`,
+      { signal: AbortSignal.timeout(30_000) }
+    );
+    if (!res.ok) return null;
+    const data: any = await res.json();
+    // The cricinfo endpoint returns { odiStats, testStats, t20Stats, iplStats, ... }
+    // Transform to our CricbuzzPlayerStats career array shape.
+    const FORMAT_CRICINFO: Record<string, string> = {
+      testStats: "TEST", odiStats: "ODI", t20Stats: "T20I", iplStats: "IPL",
+    };
+    const career: CricbuzzPlayerStats["career"] = [];
+    for (const [key, format] of Object.entries(FORMAT_CRICINFO)) {
+      const row = data[key];
+      if (!row || (row.matches ?? 0) <= 0) continue;
+      career.push({
+        format,
+        matches:  row.matches  ?? 0,
+        innings:  row.innings  ?? row.matches ?? 0,
+        runs:     row.runs     ?? 0,
+        avg:      row.avg      ?? 0,
+        sr:       row.sr       ?? 0,
+        hundreds: row.hundreds ?? 0,
+        fifties:  row.fifties  ?? 0,
+        highest:  row.hs       ?? "0",
+        wickets:  row.wickets  ?? 0,
+        economy:  row.economy  ?? 0,
+        bestBowl: row.bbm      ?? "-",
+      });
+    }
+    if (career.length === 0 || !career.some((c) => c.matches > 0)) return null;
+    return {
+      playerId:     cricbuzzPlayerId,
+      playerName:   data.name || "Unknown",
+      country:      data.country || "Unknown",
+      role:         data.role || "Batter",
+      battingStyle: "Unknown",
+      bowlingStyle: "-",
+      career,
+    };
+  } catch (e: any) {
+    logger.debug("[cricbuzz] Cricinfo ML scraper failed", { cbId: cricbuzzPlayerId, error: e.message });
+    return null;
+  }
+}
+
 export async function getPlayerStatsWithFallback(
   cricbuzzPlayerId: string
 ): Promise<PlayerStatsWithSource> {
-  // 1) Try the free scraper first.
+  // 1) Try the free Cricbuzz willow-static scraper first.
   try {
     const scraper = await fetchPlayerStatsFromScraper(cricbuzzPlayerId);
     const adapted = adaptScraperToCricbuzzShape(cricbuzzPlayerId, scraper);
     if (isValidScraperResult(adapted)) {
       return { source: "scraper", stats: adapted };
     }
-    logger.debug("[cricbuzz] Scraper returned empty/malformed — falling back to RapidAPI", { cbId: cricbuzzPlayerId });
+    logger.debug("[cricbuzz] Cricbuzz scraper returned empty — trying Cricinfo", { cbId: cricbuzzPlayerId });
   } catch (e: any) {
-    logger.debug("[cricbuzz] Scraper call failed — falling back to RapidAPI", { cbId: cricbuzzPlayerId, error: e.message });
+    logger.debug("[cricbuzz] Cricbuzz scraper failed — trying Cricinfo", { cbId: cricbuzzPlayerId, error: e.message });
   }
 
-  // 2) Fall back to RapidAPI (spends 3 credits).
+  // 2) ESPN Cricinfo via ML service (works from Render datacenter IPs).
+  //    Free, no credits, covers retired players well.
+  const cricinfo = await fetchFromCricinfoScraper(cricbuzzPlayerId);
+  if (cricinfo && isValidScraperResult(cricinfo)) {
+    logger.debug("[cricbuzz] Cricinfo scraper succeeded", { cbId: cricbuzzPlayerId, formats: cricinfo.career.length });
+    return { source: "cricinfo", stats: cricinfo };
+  }
+
+  // 3) Fall back to RapidAPI (spends 3 credits).
   const stats = await getPlayerStats(cricbuzzPlayerId);
   return { source: "rapidapi", stats };
 }
+

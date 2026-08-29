@@ -4,6 +4,15 @@ import { motion, useScroll, useTransform, useInView, animate } from "framer-moti
 import { ARCHETYPES, PLAYERS, RADAR_AXES } from "@/data/mockData";
 import { useKohliShrine, useLiveTicker } from "@/hooks/usePlayerData";
 
+// The scraper only has a URL slug for each live match (e.g.
+// "india-vs-australia-3rd-odi"), not a clean display name — turn it into
+// "India Vs Australia 3rd Odi" for the ticker.
+function formatMatchSlug(slug: string): string {
+  return slug
+    .replace(/-/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 function HeroSection() {
   const heroRef = useRef<HTMLDivElement>(null);
   const [currentWord, setCurrentWord] = useState(0);
@@ -186,6 +195,36 @@ function HeroSection() {
             </div>
           ))}
         </div>
+
+        {/* Live match ticker — the count above only told you SOMETHING is
+            live; this makes the actual scraped matches visible and
+            clickable, straight from the free Cricbuzz scraper. */}
+        {ticker?.matches && ticker.matches.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="flex flex-wrap gap-2 pt-1"
+            data-testid="live-match-ticker"
+          >
+            {ticker.matches.slice(0, 4).map((m: { matchId: string; match: string; url: string }) => (
+              <a
+                key={m.matchId}
+                href={m.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] tracking-wide border transition-colors"
+                style={{ borderColor: "rgba(192,57,43,0.35)", background: "rgba(192,57,43,0.08)", color: "#f0e6d8" }}
+              >
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="absolute inline-flex h-full w-full rounded-full bg-[#c0392b] opacity-75 animate-ping" />
+                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#c0392b]" />
+                </span>
+                {formatMatchSlug(m.match)}
+              </a>
+            ))}
+          </motion.div>
+        )}
       </div>
 
       <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10">

@@ -366,6 +366,191 @@ function StatTable({ p1, p2 }: { p1: typeof PLAYERS[0]; p2: typeof PLAYERS[0] })
   );
 }
 
+// ─── Model ID → accent colour mapping ─────────────────────────────────────────
+const MODEL_COLORS: Record<string, string> = {
+  kmeans_archetype:   "#c0392b",
+  cosine_dna:         "#d4a500",
+  dbscan_outlier:     "#8b5cf6",
+  pca_dominance:      "#0ea5e9",
+  format_versatility: "#10b981",
+  composite_batting:  "#f97316",
+};
+
+const MODEL_ICONS: Record<string, string> = {
+  kmeans_archetype:   "⬡",
+  cosine_dna:         "⬡",
+  dbscan_outlier:     "◎",
+  pca_dominance:      "↗",
+  format_versatility: "◈",
+  composite_batting:  "▣",
+};
+
+function ModelVerdicts({
+  verdicts,
+  judge,
+  p1Name,
+  p2Name,
+}: {
+  verdicts: any[];
+  judge: any | null;
+  p1Name: string;
+  p2Name: string;
+}) {
+  const [expanded, setExpanded] = useState<string | null>(null);
+
+  return (
+    <div className="mb-8">
+      <div className="flex items-center gap-3 mb-5">
+        <div className="h-px flex-1 bg-white/5" />
+        <h3 className="font-serif text-xl text-[#f5f5f5] tracking-wide">Algorithm Panel</h3>
+        <div className="h-px flex-1 bg-white/5" />
+      </div>
+
+      {/* Judge summary banner */}
+      {judge && (
+        <motion.div
+          className="mb-5 p-4 relative overflow-hidden"
+          style={{ border: "1px solid rgba(212,165,0,0.3)", background: "rgba(212,165,0,0.06)" }}
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+        >
+          <div className="absolute top-0 left-0 right-0 h-px" style={{ background: "linear-gradient(90deg,transparent,#d4a500,transparent)" }} />
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="text-[9px] uppercase tracking-[0.3em] text-[#d4a500] mb-1 font-bold">
+                ⚖ The Judge — {judge.agreement_rate}% Consensus
+              </div>
+              <div className="text-sm text-white font-medium mb-1">
+                {judge.winnerName} wins <span className="text-[#d4a500]">({judge.models_agreed}/{judge.models_total} models)</span>
+              </div>
+              <div className="text-xs text-[#888] leading-relaxed">{judge.reasoning}</div>
+            </div>
+            {/* Agreement dial */}
+            <div className="shrink-0 w-14 h-14 relative flex items-center justify-center">
+              <svg viewBox="0 0 44 44" className="w-full h-full -rotate-90">
+                <circle cx="22" cy="22" r="18" fill="none" stroke="#1a1a1a" strokeWidth="4" />
+                <circle
+                  cx="22" cy="22" r="18" fill="none"
+                  stroke="#d4a500" strokeWidth="4"
+                  strokeDasharray={`${2 * Math.PI * 18 * judge.agreement_rate / 100} ${2 * Math.PI * 18}`}
+                  strokeLinecap="round"
+                  style={{ filter: "drop-shadow(0 0 4px #d4a50080)" }}
+                />
+              </svg>
+              <span className="absolute text-[10px] font-bold text-[#d4a500] font-mono">{Math.round(judge.agreement_rate)}%</span>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* 6 model cards in 2×3 grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        {verdicts.map((v, i) => {
+          const color  = MODEL_COLORS[v.id] ?? "#888";
+          const icon   = MODEL_ICONS[v.id] ?? "◆";
+          const isOpen = expanded === v.id;
+          const confPct = Math.min(100, Math.max(0, v.confidence ?? 0));
+
+          return (
+            <motion.div
+              key={v.id}
+              className="relative overflow-hidden cursor-pointer group"
+              style={{
+                border: `1px solid ${color}28`,
+                background: "rgba(8,8,10,0.7)",
+                backdropFilter: "blur(4px)",
+              }}
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.07 }}
+              whileHover={{ scale: 1.01 }}
+              onClick={() => setExpanded(isOpen ? null : v.id)}
+              data-testid={`model-card-${v.id}`}
+            >
+              {/* Top accent line */}
+              <div className="absolute top-0 left-0 right-0 h-px" style={{ background: `linear-gradient(90deg,transparent,${color},transparent)` }} />
+              {/* Subtle corner glow */}
+              <div className="absolute top-0 left-0 w-24 h-24 pointer-events-none" style={{ background: `radial-gradient(ellipse at 0% 0%, ${color}12 0%, transparent 70%)` }} />
+
+              <div className="p-4">
+                {/* Model header */}
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm" style={{ color }}>{icon}</span>
+                    <span className="text-[9px] uppercase tracking-[0.22em] font-bold" style={{ color }}>{v.name}</span>
+                  </div>
+                  <span className="text-[8px] text-[#444] tracking-wider">{isOpen ? "▲" : "▼"}</span>
+                </div>
+
+                {/* Winner badge */}
+                <div className="mb-3 flex items-center gap-2">
+                  <div
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[9px] uppercase tracking-[0.15em] font-bold"
+                    style={{ background: `${color}1a`, border: `1px solid ${color}40`, color }}
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ background: color }} />
+                    {v.winnerName}
+                  </div>
+                </div>
+
+                {/* Confidence bar */}
+                <div className="mb-3">
+                  <div className="flex justify-between text-[8px] text-[#555] mb-1">
+                    <span>Confidence</span>
+                    <span className="font-mono" style={{ color }}>{confPct.toFixed(0)}%</span>
+                  </div>
+                  <div className="h-1 bg-[#1a1a1a] rounded-full overflow-hidden">
+                    <motion.div
+                      className="h-full rounded-full"
+                      style={{ background: `linear-gradient(90deg,${color}99,${color})`, boxShadow: `0 0 6px ${color}60` }}
+                      initial={{ width: 0 }}
+                      animate={{ width: `${confPct}%` }}
+                      transition={{ duration: 0.8, delay: 0.2 + i * 0.07 }}
+                    />
+                  </div>
+                </div>
+
+                {/* Expanded content */}
+                <AnimatePresence>
+                  {isOpen && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.25 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="pt-3 border-t mt-1" style={{ borderColor: `${color}20` }}>
+                        <div className="text-[10px] text-[#555] uppercase tracking-widest mb-2 font-bold">How This Model Works</div>
+                        <div className="text-xs text-[#888] leading-relaxed mb-3">{v.description}</div>
+                        <div className="text-[10px] text-[#555] uppercase tracking-widest mb-1 font-bold">Reasoning</div>
+                        <div className="text-xs leading-relaxed" style={{ color: `${color}dd` }}>{v.reasoning}</div>
+                        {v.dnaSimilarity !== undefined && (
+                          <div className="mt-2 text-[10px] text-[#555]">DNA Similarity: <span className="text-[#d4a500] font-mono">{v.dnaSimilarity}%</span></div>
+                        )}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* Collapsed preview reasoning */}
+                {!isOpen && (
+                  <div className="text-[10px] text-[#555] line-clamp-2 leading-relaxed">{v.reasoning}</div>
+                )}
+              </div>
+            </motion.div>
+          );
+        })}
+      </div>
+
+      <div className="mt-3 text-center text-[9px] text-[#333] uppercase tracking-[0.2em]">
+        Click any model card to expand its methodology
+      </div>
+    </div>
+  );
+}
+
 function BattleView({ p1Id, p2Id, algorithms }: { p1Id: string; p2Id: string; algorithms: string[] }) {
   const [phase, setPhase] = useState<BattlePhase>("intro");
   const [showKO, setShowKO] = useState(false);
@@ -397,18 +582,56 @@ function BattleView({ p1Id, p2Id, algorithms }: { p1Id: string; p2Id: string; al
   // if the live data has the flat per-format shape. `useBattle` now runs
   // `normalizeBattleData()` server-side, so liveResult.p1 already has
   // testStats/odiStats/... and the spread below actually updates them.
-  const p1Stats = liveResult?.p1 ? { ...p1, ...liveResult.p1 } : p1;
-  const p2Stats = liveResult?.p2 ? { ...p2, ...liveResult.p2 } : p2;
+  // dnaScore is nullable in the live payload — coalesce back to the mock so
+  // the merged object stays assignable to the mock Player shape StatTable takes.
+  const p1Stats = liveResult?.p1
+    ? { ...p1, ...liveResult.p1, dnaScore: liveResult.p1.dnaScore ?? p1.dnaScore }
+    : p1;
+  const p2Stats = liveResult?.p2
+    ? { ...p2, ...liveResult.p2, dnaScore: liveResult.p2.dnaScore ?? p2.dnaScore }
+    : p2;
 
-  const { data: moments } = useStatementMoments(p1.cricInfoId, p2.cricInfoId);
+  const { data: moments } = useStatementMoments(p1.id, p2.id);
 
-  const p1Arch = ARCHETYPES.find((a) => a.id === p1.archetypeId);
-  const p2Arch = ARCHETYPES.find((a) => a.id === p2.archetypeId);
+  // Live archetype + DNA score come from liveResult.p1/p2 (populated by the
+  // battle route's ML cluster lookup). Mock ARCHETYPES/dnaScore/radarValues
+  // are only the flicker-free placeholder while that request is in flight —
+  // once it resolves, every visible DNA number here is live, not mock.
+  const p1ArchetypeId = liveResult?.p1?.archetypeId ?? p1.archetypeId;
+  const p2ArchetypeId = liveResult?.p2?.archetypeId ?? p2.archetypeId;
+  const p1MockArch = ARCHETYPES.find((a) => a.id === p1ArchetypeId);
+  const p2MockArch = ARCHETYPES.find((a) => a.id === p2ArchetypeId);
+  // Live name/color always win when present; only the extra mock-only
+  // fields (description, centroidValues, examplePlayers) come from the
+  // static lookup, since the ML service doesn't return those.
+  const p1Arch = p1MockArch && {
+    ...p1MockArch,
+    name:  liveResult?.p1?.archetypeName  ?? p1MockArch.name,
+    color: liveResult?.p1?.archetypeColor ?? p1MockArch.color,
+  };
+  const p2Arch = p2MockArch && {
+    ...p2MockArch,
+    name:  liveResult?.p2?.archetypeName  ?? p2MockArch.name,
+    color: liveResult?.p2?.archetypeColor ?? p2MockArch.color,
+  };
+  // Live color/name should win even when the archetype id matches a known
+  // mock entry, since the ML pipeline can re-derive archetype names/colors
+  // independently of the hand-authored mockData copy.
+  const p1ArchName = liveResult?.p1?.archetypeName ?? p1Arch?.name;
+  const p2ArchName = liveResult?.p2?.archetypeName ?? p2Arch?.name;
+  const p1ArchColor = liveResult?.p1?.archetypeColor ?? p1Arch?.color;
+  const p2ArchColor = liveResult?.p2?.archetypeColor ?? p2Arch?.color;
+
+  const p1DnaScore = liveResult?.p1?.dnaScore ?? p1.dnaScore;
+  const p2DnaScore = liveResult?.p2?.dnaScore ?? p2.dnaScore;
+
+  const p1RadarValues = liveResult?.p1?.playerVector ?? p1.radarValues;
+  const p2RadarValues = liveResult?.p2?.playerVector ?? p2.radarValues;
 
   const radarData = RADAR_AXES.map((axis, i) => ({
     axis,
-    [p1.name]: p1.radarValues[i],
-    [p2.name]: p2.radarValues[i],
+    [p1.name]: p1RadarValues[i],
+    [p2.name]: p2RadarValues[i],
   }));
 
   return (
@@ -464,7 +687,7 @@ function BattleView({ p1Id, p2Id, algorithms }: { p1Id: string; p2Id: string; al
                 Player One
               </div>
               <div>
-                <div className="text-[9px] uppercase tracking-[0.22em] mb-2 text-[#c0392b]">{p1Arch?.name}</div>
+                <div className="text-[9px] uppercase tracking-[0.22em] mb-2 text-[#c0392b]">{p1ArchName}</div>
                 <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "clamp(28px,4vw,52px)", letterSpacing: "0.04em", lineHeight: 1, textShadow: "0 2px 16px rgba(0,0,0,0.9)" }} className="text-white">
                   {p1.name.split(" ")[0]}
                 </div>
@@ -478,9 +701,9 @@ function BattleView({ p1Id, p2Id, algorithms }: { p1Id: string; p2Id: string; al
                 </div>
                 <div className="mt-3 flex items-center gap-2">
                   <div className="relative h-[2px] w-24 bg-[#181818] overflow-hidden">
-                    <motion.div className="absolute inset-y-0 left-0 bg-[#c0392b]" style={{ boxShadow: "0 0 6px #c0392b" }} initial={{ width: 0 }} animate={{ width: `${p1.dnaScore}%` }} transition={{ duration: 1.1, delay: 0.5 }} />
+                    <motion.div className="absolute inset-y-0 left-0 bg-[#c0392b]" style={{ boxShadow: "0 0 6px #c0392b" }} initial={{ width: 0 }} animate={{ width: `${p1DnaScore}%` }} transition={{ duration: 1.1, delay: 0.5 }} />
                   </div>
-                  <span className="text-xs font-mono font-bold text-[#c0392b]">{p1.dnaScore}</span>
+                  <span className="text-xs font-mono font-bold text-[#c0392b]">{p1DnaScore}</span>
                 </div>
               </div>
             </div>
@@ -488,7 +711,7 @@ function BattleView({ p1Id, p2Id, algorithms }: { p1Id: string; p2Id: string; al
             {/* CENTER VS */}
             <div className="relative shrink-0 flex flex-col items-center justify-center px-5" style={{ minWidth: 110 }}>
               <div className="absolute inset-y-0 left-0 w-px bg-[#c0392b]/12" />
-              <div className="absolute inset-y-0 right-0 w-px" style={{ background: `${p2Arch?.color || "#d4a500"}18` }} />
+              <div className="absolute inset-y-0 right-0 w-px" style={{ background: `${p2ArchColor || "#d4a500"}18` }} />
               <motion.div
                 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "clamp(32px,5vw,56px)", letterSpacing: "0.1em", color: "#c0392b", textShadow: "0 0 30px #c0392b70", lineHeight: 1 }}
                 initial={{ scale: 0, opacity: 0 }}
@@ -508,36 +731,36 @@ function BattleView({ p1Id, p2Id, algorithms }: { p1Id: string; p2Id: string; al
 
             {/* P2 RIGHT */}
             <div className="flex-1 relative overflow-hidden flex items-end pb-5 pr-8 pl-4 justify-end" data-testid="p2-header">
-              <div className="absolute inset-0" style={{ background: `linear-gradient(225deg, ${p2Arch?.color || "#d4a500"}16 0%, transparent 65%)` }} />
+              <div className="absolute inset-0" style={{ background: `linear-gradient(225deg, ${p2ArchColor || "#d4a500"}16 0%, transparent 65%)` }} />
               <div
                 className="absolute top-0 left-[-20px] bottom-0 flex items-center select-none pointer-events-none overflow-hidden"
-                style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "min(28vw,300px)", color: p2Arch?.color || "#d4a500", opacity: 0.06, lineHeight: 1 }}
+                style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "min(28vw,300px)", color: p2ArchColor || "#d4a500", opacity: 0.06, lineHeight: 1 }}
               >
                 {p2.name.split(" ").map((w: string) => w[0]).join("")}
               </div>
               <div
                 className="absolute right-3 top-1/2 text-[8px] uppercase tracking-[0.4em]"
-                style={{ writingMode: "vertical-rl", transform: "translateY(-50%)", color: `${p2Arch?.color || "#d4a500"}30` }}
+                style={{ writingMode: "vertical-rl", transform: "translateY(-50%)", color: `${p2ArchColor || "#d4a500"}30` }}
               >
                 Player Two
               </div>
               <div className="text-right">
-                <div className="text-[9px] uppercase tracking-[0.22em] mb-2" style={{ color: p2Arch?.color }}>{p2Arch?.name}</div>
+                <div className="text-[9px] uppercase tracking-[0.22em] mb-2" style={{ color: p2ArchColor }}>{p2ArchName}</div>
                 <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "clamp(28px,4vw,52px)", letterSpacing: "0.04em", lineHeight: 1, textShadow: "0 2px 16px rgba(0,0,0,0.9)" }} className="text-white">
                   {p2.name.split(" ")[0]}
                 </div>
-                <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "clamp(28px,4vw,52px)", letterSpacing: "0.04em", lineHeight: 1, WebkitTextStroke: `1.5px ${p2Arch?.color || "#d4a500"}70`, color: "transparent" }}>
+                <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "clamp(28px,4vw,52px)", letterSpacing: "0.04em", lineHeight: 1, WebkitTextStroke: `1.5px ${p2ArchColor || "#d4a500"}70`, color: "transparent" }}>
                   {p2.name.split(" ").slice(1).join(" ")}
                 </div>
                 <div className="flex items-center gap-2 mt-3 justify-end">
                   <span className="text-sm">{p2.flag}</span>
                   <span className="text-[9px] text-[#4a4a4a] uppercase tracking-wider">{p2.country}</span>
-                  <div className="h-px w-5" style={{ background: p2Arch?.color }} />
+                  <div className="h-px w-5" style={{ background: p2ArchColor }} />
                 </div>
                 <div className="mt-3 flex items-center gap-2 justify-end">
-                  <span className="text-xs font-mono font-bold" style={{ color: p2Arch?.color }}>{p2.dnaScore}</span>
+                  <span className="text-xs font-mono font-bold" style={{ color: p2ArchColor }}>{p2DnaScore}</span>
                   <div className="relative h-[2px] w-24 bg-[#181818] overflow-hidden">
-                    <motion.div className="absolute inset-y-0 right-0" style={{ background: p2Arch?.color, boxShadow: `0 0 6px ${p2Arch?.color}` }} initial={{ width: 0 }} animate={{ width: `${p2.dnaScore}%` }} transition={{ duration: 1.1, delay: 0.5 }} />
+                    <motion.div className="absolute inset-y-0 right-0" style={{ background: p2ArchColor, boxShadow: `0 0 6px ${p2ArchColor}` }} initial={{ width: 0 }} animate={{ width: `${p2DnaScore}%` }} transition={{ duration: 1.1, delay: 0.5 }} />
                   </div>
                 </div>
               </div>
@@ -579,6 +802,16 @@ function BattleView({ p1Id, p2Id, algorithms }: { p1Id: string; p2Id: string; al
 
           <StatTable p1={p1Stats} p2={p2Stats} />
 
+          {/* ─── 6-Model Verdicts ─── */}
+          {result?.algorithmVerdicts && result.algorithmVerdicts.length > 0 && (
+            <ModelVerdicts
+              verdicts={result.algorithmVerdicts}
+              judge={result.judge as any}
+              p1Name={p1.name}
+              p2Name={p2.name}
+            />
+          )}
+
           <div className="mb-8">
             <h3 className="font-serif text-xl text-[#f5f5f5] mb-4">DNA Fingerprint Overlay</h3>
             <ResponsiveContainer width="100%" height={300}>
@@ -591,6 +824,7 @@ function BattleView({ p1Id, p2Id, algorithms }: { p1Id: string; p2Id: string; al
               </RadarChart>
             </ResponsiveContainer>
           </div>
+
 
           {moments && moments.length > 0 && (
             <div className="mb-8">

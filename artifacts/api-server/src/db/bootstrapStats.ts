@@ -21,17 +21,52 @@
 import "dotenv/config";
 import { pool, query } from "./postgres";
 import { getPlayerStatsWithFallback, QuotaExhaustedError, QuotaBlockedError, getQuotaRemaining } from "../services/cricbuzz";
+import { isScraperHealthy } from "../services/scraper";
 import { upsertCareerStats } from "../lib/snapshot";
 import { cacheGet, cacheSet } from "./redis";
 import { logger } from "../utils/logger";
 
 const FAIL_MARK_TTL = 7 * 86400; // don't retry a broken ID for 7 days
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * Wait (bounded) for the ML scraper service to answer its health check. On a
+ * fresh Render deploy the ML service is a separate instance that may still be
+ * cold-starting (30-50s) when this bootstrap runs. Giving it a chance to wake
+ * lets the FREE scraper path populate the DB on the very first deploy instead
+ * of failing every player and leaving the battle results page empty.
+ */
+async function waitForScraper(maxWaitMs = 90_000, stepMs = 5_000): Promise<boolean> {
+  if (await isScraperHealthy()) return true;
+  const deadline = Date.now() + maxWaitMs;
+  while (Date.now() < deadline) {
+    await sleep(stepMs);
+    if (await isScraperHealthy()) return true;
+  }
+  return false;
+}
+
 async function bootstrap(): Promise<void> {
-  if (!process.env.RAPIDAPI_KEY) {
-    logger.info("[bootstrap] RAPIDAPI_KEY not set — skipping stats bootstrap");
+  // The backfill runs on the FREE Cricbuzz scraper (via the ML service) as its
+  // primary source; RapidAPI is only an optional paid fallback. Gating the
+  // whole bootstrap behind RAPIDAPI_KEY meant a scraper-only deploy NEVER
+  // populated player_career_stats — so the battle results page had no real
+  // data to compare, which is the headline bug. Run whenever EITHER the free
+  // scraper is reachable OR a RapidAPI key is present.
+  const hasKey = !!process.env.RAPIDAPI_KEY;
+  const scraperUp = await waitForScraper();
+  if (!scraperUp && !hasKey) {
+    logger.warn(
+      "[bootstrap] Neither the free scraper nor RAPIDAPI_KEY is available — skipping stats bootstrap. " +
+      "The refresher + on-demand battle fetch will populate stats once a source comes online.",
+    );
     return;
   }
+  logger.info(
+    `[bootstrap] Stats source: ${scraperUp ? "free scraper" : "RapidAPI only"}` +
+    `${scraperUp && hasKey ? " (RapidAPI fallback available)" : ""}`,
+  );
 
   // Idempotency: only players with NO career stats rows at all.
   const pending = await query<{ id: string; cricbuzz_player_id: string; name: string }>(
@@ -51,7 +86,8 @@ async function bootstrap(): Promise<void> {
   }
 
   logger.info(
-    `[bootstrap] ${pending.length} player(s) missing career stats — starting (3 credits each, ~${pending.length * 3} total)`
+    `[bootstrap] ${pending.length} player(s) missing career stats — starting ` +
+    `(free via scraper; RapidAPI fallback ~3 credits each only if the scraper fails)`
   );
 
   let done = 0;
@@ -92,7 +128,14 @@ async function bootstrap(): Promise<void> {
         break;
       }
       failed++;
-      await cacheSet(failKey, { name: player.name, reason: e.message }, FAIL_MARK_TTL);
+      // Only cache-mark as failed when a paid RapidAPI key is in play — that
+      // protects the 3-credit budget from re-spending on a genuinely broken
+      // ID every deploy. On the free scraper-only path, retries cost nothing,
+      // so let transient errors (ML cold-start, network blips) retry next
+      // cycle instead of poisoning the player for 7 days.
+      if (hasKey) {
+        await cacheSet(failKey, { name: player.name, reason: e.message }, FAIL_MARK_TTL);
+      }
       logger.warn(`[bootstrap] ❌ ${player.name}: ${e.message}`);
     }
   }
