@@ -14,7 +14,7 @@ export function useQuizScrollProgress() {
       const viewport = window.innerHeight;
       
       // Assume a 300vh section for the animation. So the distance is viewport * 2
-      const animationDistance = viewport * 2.5; 
+      const animationDistance = viewport * 2.0;
 
       target.current = Math.max(
         0,

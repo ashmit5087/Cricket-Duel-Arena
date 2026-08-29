@@ -118,27 +118,42 @@ export default function Quiz() {
       {/* 2. CTA Section */}
       {showGallery && (
         <section className="relative z-30 bg-[#0a0a0c] min-h-[80vh] flex flex-col items-center justify-center text-center px-4">
-          <div
-            className={`transition-all duration-1000 ease-out flex flex-col items-center gap-6 ${
-              settled ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"
-            }`}
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: false, margin: "-100px" }}
+            variants={{
+              hidden: { opacity: 0, y: 30 },
+              visible: { opacity: 1, y: 0, transition: { staggerChildren: 0.2, duration: 0.8, ease: "easeOut" } },
+            }}
+            className="flex flex-col items-center gap-6"
           >
-            <p className="text-[10px] uppercase tracking-[0.2em] text-[#c0392b] font-bold">
+            <motion.p 
+              variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }}
+              className="text-[10px] uppercase tracking-[0.2em] text-[#c0392b] font-bold"
+            >
               Cricket DNA
-            </p>
-            <h2 className="font-serif text-4xl md:text-6xl text-white tracking-tight">
+            </motion.p>
+            <motion.h2 
+              variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }}
+              className="font-serif text-4xl md:text-6xl text-white tracking-tight"
+            >
               Think you know<br/>the King? Bet.
-            </h2>
-            <p className="text-[#a0a0a0] max-w-md mx-auto text-lg mb-4">
+            </motion.h2>
+            <motion.p 
+              variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }}
+              className="text-[#a0a0a0] max-w-md mx-auto text-lg mb-4"
+            >
               10 questions. No easy outs.
-            </p>
-            <button
+            </motion.p>
+            <motion.button
+              variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }}
               onClick={handleGenerateQuizClick}
               className="px-8 py-4 uppercase tracking-[0.2em] font-bold text-[11px] bg-[#c0392b] text-white hover:bg-[#e74c3c] transition-colors hover:-translate-y-0.5 active:translate-y-0"
             >
               Generate Quiz →
-            </button>
-          </div>
+            </motion.button>
+          </motion.div>
         </section>
       )}
 
