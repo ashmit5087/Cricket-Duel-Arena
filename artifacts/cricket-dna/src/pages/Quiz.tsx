@@ -83,9 +83,6 @@ export default function Quiz() {
       });
   };
 
-  const titleReveal = Math.max(0, Math.min(1, (progress - 0.1) / 0.25));
-  const titleScale = 0.96 + titleReveal * 0.04;
-
   const showGallery = stage === "cinematic" || stage === "cta" || stage === "name";
 
   return (
@@ -110,10 +107,6 @@ export default function Quiz() {
             >
               <h1
                 className="font-serif text-5xl tracking-tight md:text-7xl lg:text-8xl text-white uppercase"
-                style={{
-                  opacity: titleReveal,
-                  transform: `scale(${titleScale})`,
-                }}
               >
                 KING KOHLI
               </h1>
