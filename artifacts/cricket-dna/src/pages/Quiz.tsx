@@ -8,6 +8,7 @@ import QuizInterface, { QuizData } from "@/components/quiz/QuizInterface";
 import QuizResult, { QuizResultData } from "@/components/quiz/QuizResult";
 import MasterLeaderboard from "@/components/quiz/MasterLeaderboard";
 import GifText from "@/components/ui/gif-text";
+import { ParticleTextEffect } from "@/components/ui/particle-text-effect";
 import { generateQuiz, submitQuiz } from "@/lib/api";
 
 type QuizStage = "cinematic" | "cta" | "name" | "generating" | "quiz" | "result";
@@ -101,7 +102,7 @@ export default function Quiz() {
               falloff={{ near: 0.8, far: 14 }}
               className="h-screen w-full"
             />
-
+            
             {/* KING KOHLI Title Overlay */}
             <div
               className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center px-6 text-center mix-blend-exclusion"
@@ -129,33 +130,18 @@ export default function Quiz() {
             }}
             className="flex flex-col items-center gap-6"
           >
-            <motion.p
-              variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }}
-              className="text-[10px] uppercase tracking-[0.2em] text-[#c0392b] font-bold"
-            >
-              Cricket DNA
-            </motion.p>
-            <motion.h2
-              variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }}
-              className="font-serif text-4xl md:text-6xl text-white tracking-tight"
-            >
-              Think you know<br />the King? Bet.
-            </motion.h2>
-            <motion.p
-              variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }}
-              className="text-[#a0a0a0] max-w-md mx-auto text-lg mb-4"
-            >
-              10 questions. No easy outs.
-            </motion.p>
+            <ParticleTextEffect 
+              words={["THINK YOU KNOW", "THE KING?", "BET.", "10 QUESTIONS", "NO EASY OUTS"]} 
+            />
             <motion.button
               variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }}
               onClick={handleGenerateQuizClick}
               className="mt-4 transition-transform hover:-translate-y-1 active:translate-y-0"
             >
-              <GifText
-                text="GENERATE QUIZ"
-                gif="https://assets.amarn.me/gif-text.gif"
-                className="text-4xl md:text-5xl uppercase tracking-widest px-8 py-4 bg-white/5 border border-white/10 hover:border-white/30 transition-colors"
+              <GifText 
+                text="GENERATE QUIZ" 
+                gif="https://assets.amarn.me/gif-text.gif" 
+                className="text-4xl md:text-5xl uppercase tracking-widest px-8 py-4 bg-white/5 border border-white/10 hover:border-white/30 transition-colors" 
               />
             </motion.button>
           </motion.div>
