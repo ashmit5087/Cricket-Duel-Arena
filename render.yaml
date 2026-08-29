@@ -53,6 +53,8 @@ services:
     buildCommand: pnpm install && pnpm build
     # bootstrapStats.js is idempotent: it spends 0 credits once every player
     # has career stats, so it's safe to run on every deploy.
+    # migrate.js executes src/db/schema.sql on startup to guarantee all Postgres
+    # tables (including quiz_attempts / the leaderboard) exist automatically.
     startCommand: node dist/db/migrate.js && node dist/db/bootstrapStats.js && node dist/index.js
     plan: free
     healthCheckPath: /health

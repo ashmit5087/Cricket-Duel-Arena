@@ -7,6 +7,7 @@ import QuizNameModal from "@/components/quiz/QuizNameModal";
 import QuizInterface, { QuizData } from "@/components/quiz/QuizInterface";
 import QuizResult, { QuizResultData } from "@/components/quiz/QuizResult";
 import MasterLeaderboard from "@/components/quiz/MasterLeaderboard";
+import GifText from "@/components/ui/gif-text";
 import { generateQuiz, submitQuiz } from "@/lib/api";
 
 type QuizStage = "cinematic" | "cta" | "name" | "generating" | "quiz" | "result";
@@ -149,9 +150,13 @@ export default function Quiz() {
             <motion.button
               variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }}
               onClick={handleGenerateQuizClick}
-              className="px-8 py-4 uppercase tracking-[0.2em] font-bold text-[11px] bg-[#c0392b] text-white hover:bg-[#e74c3c] transition-colors hover:-translate-y-0.5 active:translate-y-0"
+              className="mt-4 transition-transform hover:-translate-y-1 active:translate-y-0"
             >
-              Generate Quiz →
+              <GifText 
+                text="GENERATE QUIZ" 
+                gif="https://assets.amarn.me/gif-text.gif" 
+                className="text-4xl md:text-5xl uppercase tracking-widest px-8 py-4 bg-white/5 border border-white/10 hover:border-white/30 transition-colors" 
+              />
             </motion.button>
           </motion.div>
         </section>
@@ -185,19 +190,25 @@ export default function Quiz() {
         </section>
       )}
 
-      {/* Results & Leaderboard */}
       {stage === "result" && resultData && (
-        <section className="min-h-screen bg-[#0a0a0c] flex flex-col pt-24 pb-12">
+        <section className="min-h-[80vh] bg-[#0a0a0c] flex flex-col pt-24 pb-12">
           <QuizResult
             playerName={playerName}
             result={resultData}
             onPlayAgain={handlePlayAgain}
           />
-          <div className="mt-auto w-full pt-20 border-t border-white/10">
-            <MasterLeaderboard currentPlayerName={playerName} />
-          </div>
         </section>
       )}
+
+      {/* 3. Master Leaderboard */}
+      <section
+        id="leaderboard"
+        className="relative min-h-screen w-full px-6 py-24 bg-[#0a0a0c] border-t border-white/5"
+      >
+        <div className="mx-auto w-full max-w-5xl">
+          <MasterLeaderboard currentPlayerName={playerName} />
+        </div>
+      </section>
     </main>
   );
 }
