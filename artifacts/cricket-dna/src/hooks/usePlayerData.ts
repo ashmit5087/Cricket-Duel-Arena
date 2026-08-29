@@ -112,8 +112,8 @@ export function useQuiz(opts?: { enabled?: boolean }) {
 
 export function useSubmitQuiz() {
   return useMutation({
-    mutationFn: ({ token, playerName, answers }: { token: string; playerName: string; answers: { questionId: string; selectedIndex: number }[] }) =>
-      submitQuiz(token, playerName, answers),
+    mutationFn: ({ token, answers }: { token: string; answers: { questionId: string; selectedIndex: number }[] }) =>
+      submitQuiz(token, answers),
   });
 }
 

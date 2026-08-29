@@ -19,7 +19,6 @@ export const quizRouter: Router = Router();
 
 interface QuizSubmission {
   quizToken: string;
-  playerName: string;
   answers: {
     questionId: string;
     selectedIndex: number;
@@ -88,8 +87,8 @@ quizRouter.post("/kohli-fanboy/submit", async (req: Request, res: Response) => {
   try {
     const submission = req.body as QuizSubmission;
 
-    if (!submission.quizToken || !submission.answers || !submission.playerName) {
-      return res.status(400).json({ error: "quizToken, playerName, and answers are required." });
+    if (!submission.quizToken || !submission.answers) {
+      return res.status(400).json({ error: "quizToken and answers are required." });
     }
 
     // Verify the signed token — never trust correct answers from the client
@@ -132,12 +131,11 @@ quizRouter.post("/kohli-fanboy/submit", async (req: Request, res: Response) => {
     // Persist only the attempt result — NOT the questions
     await query(
       `INSERT INTO quiz_attempts
-        (quiz_id, user_id, player_name, score, max_score, percentage, tier, answers)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+        (quiz_id, user_id, score, max_score, percentage, tier, answers)
+       VALUES ($1,$2,$3,$4,$5,$6,$7)`,
       [
         "kohli-fanboy",
         null, // user_id — can be added later with auth
-        submission.playerName,
         totalScore,
         maxScore,
         percentage,
@@ -167,11 +165,11 @@ quizRouter.post("/kohli-fanboy/submit", async (req: Request, res: Response) => {
 quizRouter.get("/kohli-fanboy/leaderboard", async (_req: Request, res: Response) => {
   try {
     const rows = await query(
-      `SELECT player_name, score, max_score, percentage, tier, created_at
+      `SELECT user_id, score, max_score, percentage, tier, created_at
        FROM quiz_attempts
        WHERE quiz_id = $1
        ORDER BY score DESC, created_at ASC
-       LIMIT 50`,
+       LIMIT 20`,
       ["kohli-fanboy"]
     );
 

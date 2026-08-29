@@ -41,9 +41,7 @@ const DriftWall = ({
   grayscale = false,
   overlayColor = '#060010',
   className = '',
-  style,
-  isControlled = false,
-  controlledProgress = 0
+  style
 }: any) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const planeRef = useRef<HTMLDivElement>(null);
@@ -134,22 +132,7 @@ const DriftWall = ({
       pointerDampedRef.current.y += (targetY - pointerDampedRef.current.y) * damp;
       applyPlaneTransform(pointerDampedRef.current.x, pointerDampedRef.current.y);
 
-      if (isControlled) {
-        for (let c = 0; c < trackRefs.current.length; c++) {
-          const meta = columnMeta[c];
-          if (!meta) continue;
-          
-          const maxScroll = meta.copyHeight * 2;
-          const dirSign = baseVelocities[c] > 0 ? 1 : -1;
-          const targetOffset = controlledProgress * maxScroll * dirSign;
-          
-          let next = ((targetOffset % meta.copyHeight) + meta.copyHeight) % meta.copyHeight;
-          offsetsRef.current[c] = next;
-
-          const el = trackRefs.current[c];
-          if (el) el.style.transform = `translate3d(0, ${-next}px, 0)`;
-        }
-      } else if (!reduced) {
+      if (!reduced) {
         for (let c = 0; c < trackRefs.current.length; c++) {
           const meta = columnMeta[c];
           if (!meta) continue;
