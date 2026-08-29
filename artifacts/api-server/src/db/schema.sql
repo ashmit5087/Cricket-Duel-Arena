@@ -327,6 +327,7 @@ CREATE OR REPLACE TRIGGER trg_live_state_updated_at
 CREATE TABLE IF NOT EXISTS quiz_attempts (
   id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   quiz_id     TEXT NOT NULL,
+  player_name TEXT NOT NULL,
   user_id     TEXT,
   score       INT NOT NULL,
   max_score   INT NOT NULL,
@@ -336,5 +337,8 @@ CREATE TABLE IF NOT EXISTS quiz_attempts (
   created_at  TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_quiz_attempts_quiz
-  ON quiz_attempts(quiz_id, score DESC);
+-- Self-heal
+ALTER TABLE quiz_attempts ADD COLUMN IF NOT EXISTS player_name TEXT NOT NULL DEFAULT 'Anonymous';
+
+CREATE INDEX IF NOT EXISTS idx_quiz_attempts_leaderboard
+  ON quiz_attempts(quiz_id, score DESC, created_at ASC);

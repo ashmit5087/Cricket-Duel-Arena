@@ -19,6 +19,7 @@ export const quizRouter: Router = Router();
 
 interface QuizSubmission {
   quizToken: string;
+  playerName: string;
   answers: {
     questionId: string;
     selectedIndex: number;
@@ -131,10 +132,11 @@ quizRouter.post("/kohli-fanboy/submit", async (req: Request, res: Response) => {
     // Persist only the attempt result — NOT the questions
     await query(
       `INSERT INTO quiz_attempts
-        (quiz_id, user_id, score, max_score, percentage, tier, answers)
-       VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+        (quiz_id, player_name, user_id, score, max_score, percentage, tier, answers)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
       [
         "kohli-fanboy",
+        submission.playerName || "Anonymous",
         null, // user_id — can be added later with auth
         totalScore,
         maxScore,
@@ -165,11 +167,11 @@ quizRouter.post("/kohli-fanboy/submit", async (req: Request, res: Response) => {
 quizRouter.get("/kohli-fanboy/leaderboard", async (_req: Request, res: Response) => {
   try {
     const rows = await query(
-      `SELECT user_id, score, max_score, percentage, tier, created_at
+      `SELECT player_name, score, max_score, percentage, tier, created_at
        FROM quiz_attempts
        WHERE quiz_id = $1
        ORDER BY score DESC, created_at ASC
-       LIMIT 20`,
+       LIMIT 50`,
       ["kohli-fanboy"]
     );
 

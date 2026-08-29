@@ -481,8 +481,8 @@ export interface QuizResult {
   }[];
 }
 
-export interface QuizLeaderboardEntry {
-  user_id: string | null;
+export interface LeaderboardEntry {
+  player_name: string;
   score: number;
   max_score: number;
   percentage: number;
@@ -491,19 +491,19 @@ export interface QuizLeaderboardEntry {
 }
 
 /** Fetch a fresh LLM-generated quiz. Each call generates new questions. */
-export const fetchQuiz = () =>
+export const generateQuiz = () =>
   apiFetch<QuizData>("/api/quiz/kohli-fanboy");
 
 /** Submit quiz answers with the signed token. */
-export const submitQuiz = (quizToken: string, answers: { questionId: string; selectedIndex: number }[]) =>
+export const submitQuiz = ({ quizToken, answers, playerName }: { quizToken: string, answers: { questionId: string; selectedIndex: number }[], playerName: string }) =>
   apiFetch<QuizResult>("/api/quiz/kohli-fanboy/submit", {
     method: "POST",
-    body: JSON.stringify({ quizToken, answers }),
+    body: JSON.stringify({ quizToken, answers, playerName }),
   });
 
 /** Fetch quiz leaderboard. */
-export const fetchQuizLeaderboard = () =>
-  apiFetch<QuizLeaderboardEntry[]>("/api/quiz/kohli-fanboy/leaderboard");
+export const fetchLeaderboard = () =>
+  apiFetch<LeaderboardEntry[]>("/api/quiz/kohli-fanboy/leaderboard");
 
 // ─── Algorithms ──────────────────────────────────────────────────────────────
 

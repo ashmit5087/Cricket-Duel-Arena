@@ -36,9 +36,9 @@ import {
   type KohliShrineLive,
   normalizeBattleData,
   type BattleData,
-  fetchQuiz,
+  generateQuiz,
   submitQuiz,
-  fetchQuizLeaderboard,
+  fetchLeaderboard,
   fetchAlgorithms,
 } from "@/lib/api";
 import { PLAYERS, ARCHETYPES, KOHLI_CAREER } from "@/data/mockData";
@@ -101,7 +101,7 @@ export function usePlayerSearch(query: string) {
 export function useQuiz(opts?: { enabled?: boolean }) {
   return useQuery({
     queryKey: ["quiz", "kohli-fanboy"],
-    queryFn: fetchQuiz,
+    queryFn: generateQuiz,
     enabled: opts?.enabled ?? false,
     staleTime: 0, // Always fetch fresh LLM quiz
     gcTime: 1000 * 60 * 5, // Keep last result for 5 min for the result-screen recap
@@ -112,15 +112,15 @@ export function useQuiz(opts?: { enabled?: boolean }) {
 
 export function useSubmitQuiz() {
   return useMutation({
-    mutationFn: ({ token, answers }: { token: string; answers: { questionId: string; selectedIndex: number }[] }) =>
-      submitQuiz(token, answers),
+    mutationFn: ({ token, answers, playerName }: { token: string; answers: { questionId: string; selectedIndex: number }[], playerName: string }) =>
+      submitQuiz({ quizToken: token, answers, playerName }),
   });
 }
 
 export function useQuizLeaderboard() {
   return useQuery({
     queryKey: ["quiz", "leaderboard"],
-    queryFn: fetchQuizLeaderboard,
+    queryFn: fetchLeaderboard,
     staleTime: 1000 * 60, // 1 min
   });
 }

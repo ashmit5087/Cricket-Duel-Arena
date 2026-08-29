@@ -11,6 +11,7 @@ import DriftWall from "@/components/ui/DriftWall";
 import ScrollExpand from "@/components/ui/ScrollExpand";
 import StrokeText from "@/components/ui/StrokeText";
 import AccordionGallery from "@/components/ui/AccordionGallery";
+import { driftWallImages } from "@/lib/drift-wall-images";
 
 function CountUpStat({ value, suffix = "", prefix = "" }: { value: number; suffix?: string; prefix?: string }) {
   const ref = useRef<HTMLSpanElement>(null);
@@ -196,27 +197,7 @@ function HeroSection({ shrineData }: { shrineData?: KohliShrineLive }) {
 }
 
 function GallerySection() {
-  const items = [
-    { image: '/gallery/virat 1.jpg', title: 'King Kohli' },
-    { image: '/gallery/virat 2.jpg', title: 'King Kohli' },
-    { image: '/gallery/virat 3.jpg', title: 'King Kohli' },
-    { image: '/gallery/virat 4.jpg', title: 'King Kohli' },
-    { image: '/gallery/virat 6.jpg', title: 'King Kohli' },
-    { image: '/gallery/virat 7.jpg', title: 'King Kohli' },
-    { image: '/gallery/virat 8.jpg', title: 'King Kohli' },
-    { image: '/gallery/virat 9.jpg', title: 'King Kohli' },
-    { image: '/gallery/virat 10.jpg', title: 'King Kohli' },
-    { image: '/gallery/virat 11.jpg', title: 'King Kohli' },
-    { image: '/gallery/virat 12.jpg', title: 'King Kohli' },
-    { image: '/gallery/virat 13.jpg', title: 'King Kohli' },
-    { image: '/gallery/virat 14.jpg', title: 'King Kohli' },
-    { image: '/gallery/virat 15.jpg', title: 'King Kohli' },
-    { image: '/gallery/virat 16.jpg', title: 'King Kohli' },
-    { image: '/gallery/virat 17.jpg', title: 'King Kohli' },
-    { image: '/gallery/virat 18.jpg', title: 'King Kohli' },
-    { image: '/gallery/virat 19.jpg', title: 'King Kohli' },
-    { image: '/gallery/virat 20.jpg', title: 'King Kohli' },
-  ];
+  const items = driftWallImages.map(img => ({ image: img.src, title: img.alt }));
 
   return (
     <section className="relative w-full bg-[#0a0a0a]">
