@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { motion, useScroll, useTransform, useInView, animate } from "framer-motion";
 import { ARCHETYPES, PLAYERS, RADAR_AXES } from "@/data/mockData";
 import { useKohliShrine, useLiveTicker } from "@/hooks/usePlayerData";
+import { StackedCards } from "@/components/ui/glass-cards";
 
 // The scraper only has a URL slug for each live match (e.g.
 // "india-vs-australia-3rd-odi"), not a clean display name — turn it into
@@ -325,112 +326,7 @@ function StatsWall() {
   );
 }
 
-function StackingCards() {
-  const sectionRef = useRef<HTMLDivElement>(null);
-  const [activeCard, setActiveCard] = useState(0);
 
-  const cards = [
-    { accent: "#c0392b", title: "Every cricketer reduced to 20 numbers", sub: "Dot ball %, yorker frequency, chasing average, pressure index..." },
-    { accent: "#d4a500", title: "Clusters form naturally — no labels applied", sub: "The algorithm doesn't know Kohli is a batter. It just knows the numbers." },
-    { accent: "#f5f5f5", title: "Archetypes emerge: The Pressure Architect", sub: "Players who perform identically despite different teams, eras, nations." },
-    { accent: "#888", title: "Cross-era DNA twins discovered", sub: "Is Jasprit Bumrah the same bowler as Lasith Malinga? The data says yes." },
-  ];
-
-  useEffect(() => {
-    let cleanup: () => void = () => {};
-    (async () => {
-      const gsap = (await import("gsap")).default;
-      const { ScrollTrigger } = await import("gsap/ScrollTrigger");
-      gsap.registerPlugin(ScrollTrigger);
-
-      const section = sectionRef.current;
-      if (!section) return;
-
-      // Pin the ENTIRE section as one unit with pinSpacing: true so it
-      // cleanly adds its own scroll-length and releases before the next section.
-      ScrollTrigger.create({
-        trigger: section,
-        start: "top top",
-        end: `+=${cards.length * 150}vh`,
-        pin: true,
-        pinSpacing: true,
-        scrub: 1.5,
-        anticipatePin: 1,
-        onUpdate(self) {
-          const idx = Math.min(
-            cards.length - 1,
-            Math.floor(self.progress * cards.length)
-          );
-          setActiveCard((prev) => (prev === idx ? prev : idx));
-        },
-      });
-
-      cleanup = () => ScrollTrigger.getAll().forEach((t) => t.kill());
-    })();
-    return () => cleanup();
-  }, [cards.length]);
-
-  return (
-    <div
-      ref={sectionRef}
-      className="relative flex items-center justify-center min-h-screen bg-[#0a0a0a]"
-      data-testid="stacking-cards"
-    >
-      {/* Progress dots */}
-      <div className="absolute right-8 top-1/2 -translate-y-1/2 flex flex-col gap-3 z-20">
-        {cards.map((_, i) => (
-          <div
-            key={i}
-            className="w-1.5 rounded-full transition-all duration-300"
-            style={{
-              height: activeCard === i ? 24 : 8,
-              background: activeCard === i ? cards[i].accent : "rgba(255,255,255,0.12)",
-            }}
-          />
-        ))}
-      </div>
-
-      {/* Card stack — all cards occupy the same space; active one is visible */}
-      <div className="relative w-full max-w-3xl px-8">
-        {cards.map((card, i) => (
-          <motion.div
-            key={i}
-            className="stack-card absolute left-8 right-8"
-            style={{ top: "50%", zIndex: i + 1 }}
-            animate={{
-              y: activeCard === i ? "-50%" : activeCard > i ? "-58%" : "-38%",
-              opacity: activeCard === i ? 1 : activeCard > i ? 0 : 0,
-              scale: activeCard === i ? 1 : 0.96,
-            }}
-            transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
-          >
-            <div
-              className="w-full p-12 md:p-16 border"
-              style={{ background: "#0f0f0f", borderColor: `${card.accent}35` }}
-            >
-              <div className="w-8 h-px mb-8" style={{ background: card.accent }} />
-              <div className="font-serif text-3xl md:text-5xl text-[#f5f5f5] mb-4 leading-tight">
-                {card.title}
-              </div>
-              <div className="text-[#888] text-base md:text-lg leading-relaxed">{card.sub}</div>
-              <div className="text-xs text-[#444] mt-8 uppercase tracking-widest">
-                {String(i + 1).padStart(2, "0")} / {String(cards.length).padStart(2, "0")}
-              </div>
-            </div>
-          </motion.div>
-        ))}
-
-        {/* Placeholder height so the absolute cards don't collapse the container */}
-        <div className="invisible p-12 md:p-16 border" aria-hidden>
-          <div className="w-8 h-px mb-8" />
-          <div className="font-serif text-3xl md:text-5xl mb-4 leading-tight">{cards[0].title}</div>
-          <div className="text-base md:text-lg leading-relaxed">{cards[0].sub}</div>
-          <div className="text-xs mt-8" />
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function ArchetypesSection() {
   const [activeIdx, setActiveIdx] = useState(0);
@@ -780,7 +676,7 @@ export default function Home() {
     <div className="bg-[#0a0a0a]" data-testid="home-page">
       <HeroSection />
       <StatsWall />
-      <StackingCards />
+      <StackedCards />
       <ArchetypesSection />
       <HorizontalGallery />
       <TickerText />
