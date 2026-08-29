@@ -1,0 +1,6 @@
+{
+  "version": 2,
+  "buildCommand": "pnpm --filter ./artifacts/cricket-dna build",
+  "installCommand": "pnpm install",
+  "outputDirectory": "artifacts/cricket-dna/dist"
+}
