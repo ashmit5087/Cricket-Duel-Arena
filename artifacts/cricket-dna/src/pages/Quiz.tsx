@@ -86,7 +86,7 @@ export default function Quiz() {
   const showGallery = stage === "cinematic" || stage === "cta" || stage === "name";
 
   return (
-    <main className="bg-[#0a0a0c] min-h-screen text-white font-sans overflow-x-hidden selection:bg-[#c0392b] selection:text-white">
+    <main className="bg-[#0a0a0c] min-h-screen text-white font-sans selection:bg-[#c0392b] selection:text-white">
       {/* 1. Cinematic Gallery Section */}
       {showGallery && (
         <section className="relative" style={{ height: "300vh" }}>
@@ -117,7 +117,7 @@ export default function Quiz() {
 
       {/* 2. CTA Section */}
       {showGallery && (
-        <section className="relative z-30 bg-[#0a0a0c] py-32 flex flex-col items-center justify-center text-center px-4">
+        <section className="relative z-30 bg-[#0a0a0c] min-h-[80vh] flex flex-col items-center justify-center text-center px-4">
           <div
             className={`transition-all duration-1000 ease-out flex flex-col items-center gap-6 ${
               settled ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"
