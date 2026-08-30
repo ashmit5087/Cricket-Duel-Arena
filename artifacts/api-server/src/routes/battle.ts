@@ -291,10 +291,12 @@ async function computeBattle(p1Id: string, p2Id: string, algorithms: string[] = 
       const score1 = c1?.dnaScore ?? 50;
       const score2 = c2?.dnaScore ?? 50;
 
-      // Judge winner takes priority; fall back to DNA score comparison
-      const predictedWinnerId = judge?.winner === mlId1 ? p1Id
-        : judge?.winner === mlId2 ? p2Id
-        : score1 >= score2 ? p1Id : p2Id;
+      // Judge winner takes priority; fall back to DNA score comparison.
+      // Normalize to the canonical internalId so the frontend can resolve the
+      // winner regardless of which id space the ML service echoes back.
+      const predictedWinnerId = judge?.winner === mlId1 ? roster1.internalId
+        : judge?.winner === mlId2 ? roster2.internalId
+        : score1 >= score2 ? roster1.internalId : roster2.internalId;
 
       mlResult = {
         available:       true,
@@ -336,9 +338,14 @@ async function computeBattle(p1Id: string, p2Id: string, algorithms: string[] = 
   // This is the verdict the results page renders, so it must reflect every
   // format shown in the comparison table — not ODI average alone.
   const verdict = allFormatVerdict(stats1?.career, stats2?.career);
-  const statWinner = verdict.score1 >= verdict.score2 ? p1Id : p2Id;
-  const winnerName = statWinner === p1Id ? roster1.name : roster2.name;
-  const winnerFormats = statWinner === p1Id ? verdict.wins1 : verdict.wins2;
+  // Report the winner as the canonical internalId (roster.internalId), never the
+  // raw incoming id. The frontend matches statComparison.winner against
+  // PLAYERS[].id (internalId); echoing whatever id the caller sent — e.g. an
+  // ESPN or Cricbuzz id — would silently break the lookup and fall back to p1.
+  const p1WinsStat = verdict.score1 >= verdict.score2;
+  const statWinner = p1WinsStat ? roster1.internalId : roster2.internalId;
+  const winnerName = p1WinsStat ? roster1.name : roster2.name;
+  const winnerFormats = p1WinsStat ? verdict.wins1 : verdict.wins2;
   const totalFormats = verdict.wins1.length + verdict.wins2.length;
   const gap = Math.abs(verdict.score1 - verdict.score2).toFixed(1);
 

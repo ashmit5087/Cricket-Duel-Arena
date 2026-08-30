@@ -97,10 +97,20 @@ def clamp(val: float, lo=0.0, hi=100.0) -> float:
 
 
 def normalize_avg(avg: float, role: str) -> float:
-    """Normalize batting avg to 0-100 scale based on role context."""
+    """Normalize batting/bowling avg to 0-100 scale based on role context."""
     if role == "bowler":
-        # Lower bowling avg is better (25 = elite, 40 = average)
-        return clamp((45 - avg) / 20 * 100)
+        # Lower bowling avg is better. A missing/zero average means "unknown" —
+        # NOT elite. Without this guard, a bowler with no data scored 100, the
+        # bug that collapsed every zero-stat bowler onto an identical "perfect"
+        # vector. Treat unknown as a neutral prior instead.
+        if avg <= 0:
+            return 50.0
+        # Scale 16→100 down to 48→0. The old (45-avg)/20 scale saturated at 100
+        # for any avg <= 25, so every elite bowler (McGrath 21.6, Wasim 23.6,
+        # Bumrah 19.6) collapsed to an identical 100 across all three format
+        # dims and became cosine-identical. This wider band keeps resolution
+        # exactly where the great bowlers live.
+        return clamp((48 - avg) / 32 * 100)
     # Batter: 60+ is god-tier, 20 is replacement level
     return clamp((avg - 20) / 45 * 100)
 
@@ -112,6 +122,15 @@ def normalize_sr(sr: float, format_type: str) -> float:
     if format_type == "odi":
         return clamp((sr - 55) / 55 * 100)
     return clamp((sr - 100) / 70 * 100)  # T20
+
+
+def normalize_econ(econ: float) -> float:
+    """Normalize a bowler's economy rate to 0-100 (lower economy = better).
+    ~3.8 rpo is miserly (=~89), ~6.2 rpo is expensive (=0). A missing/zero
+    economy is 'unknown', not elite, so it maps to a neutral prior."""
+    if econ <= 0:
+        return 50.0
+    return clamp((6.2 - econ) / 2.7 * 100)
 
 
 def build_vector(profile: Dict[str, Any]) -> np.ndarray:
@@ -141,6 +160,22 @@ def build_vector(profile: Dict[str, Any]) -> np.ndarray:
     odi_m    = max(g(odi, "matches"), 1)
     ipl_avg  = g(ipl,  "avg")
     ipl_sr   = g(ipl,  "sr")
+    odi_econ = g(odi,  "economy")
+
+    # Bowler-specific real signals. The per-format bowling averages carry
+    # genuinely different information (a Test workhorse and a T20 death
+    # specialist have very different lines); deriving every bowler dimension
+    # from ODI average alone made all bowler vectors collinear, so cosine
+    # similarity saturated near 100% and pace/spin were indistinguishable.
+    # Economy rate is an independent real axis — it separates accuracy bowlers
+    # (McGrath ~3.9) from expensive strike bowlers (Shami ~5.5) regardless of
+    # their average, which is what finally spreads the elite pace cluster.
+    # Bowling style is read from the ground-truth archetype ("E" == spin).
+    b_odi   = normalize_avg(odi_avg,  "bowler")
+    b_test  = normalize_avg(test_avg, "bowler")
+    b_t20   = normalize_avg(t20_avg,  "bowler")
+    b_econ  = normalize_econ(odi_econ)
+    is_spin = is_bowler and profile.get("archetype_id") == "E"
 
     # ── Dim 0: Pressure score
     # Proxy: hundreds per match × avg (batters) or wickets in big games (bowlers)
@@ -153,7 +188,7 @@ def build_vector(profile: Dict[str, Any]) -> np.ndarray:
     chase_proxy = clamp(normalize_avg(odi_avg * 1.12, "batter") if not is_bowler else 40)
 
     # ── Dim 2: Control % (proxy: inverse of SR for batters means they play more dots)
-    control = clamp(100 - normalize_sr(odi_sr, "odi") * 0.4) if not is_bowler else clamp(70 + normalize_avg(odi_avg, "bowler") * 0.3)
+    control = clamp(100 - normalize_sr(odi_sr, "odi") * 0.4) if not is_bowler else clamp(60 + b_test * 0.35)
 
     # ── Dim 3: Boundary %
     # Proxy: high SR = high boundary %, T20 SR is the best signal
@@ -164,10 +199,10 @@ def build_vector(profile: Dict[str, Any]) -> np.ndarray:
 
     # ── Dim 5: Big match differential
     # Proxy: hundreds / matches ratio — consistent scorers perform in big games
-    big_match = clamp((odi_100s / odi_m * 100) * 4.5 + 30) if not is_bowler else clamp(60 + normalize_avg(odi_avg, "bowler") * 0.4)
+    big_match = clamp((odi_100s / odi_m * 100) * 4.5 + 30) if not is_bowler else clamp(45 + b_t20 * 0.5)
 
     # ── Dim 6: Phase 3 SR (death overs) — T20 SR is best available proxy
-    phase3 = clamp(normalize_sr(t20_sr, "t20")) if not is_bowler else clamp(normalize_avg(odi_avg, "bowler") * 0.9 + 5)
+    phase3 = clamp(normalize_sr(t20_sr, "t20")) if not is_bowler else clamp(b_t20 * 0.9 + 5)
 
     # ── Dim 7: Format versatility — all 3 avgs being similar = versatile
     if not is_bowler:
@@ -182,7 +217,17 @@ def build_vector(profile: Dict[str, Any]) -> np.ndarray:
         versatility = clamp(70.0)
 
     # ── Dim 8-13: Bowler-specific (batters get neutral values)
-    if is_bowler or is_allround:
+    if is_bowler:
+        # Each dim keys off a different real signal so bowler vectors are no
+        # longer collinear: economy (containment), Test discipline, T20 death
+        # skill, ODI wicket-taking, plus a pace/spin split on "attack shape".
+        dot_ball   = clamp(b_econ * 0.80 + 15)                          # containment (economy)
+        death_econ = clamp(b_econ * 0.55 + b_t20 * 0.35 + 5)            # death overs (econ + T20)
+        yorker_f   = clamp((45 if is_spin else 70) + (b_odi - 50) * 0.3)  # pace weapon
+        wicket_div = clamp((72 if is_spin else 48) + (b_test - 50) * 0.2) # spin variety
+        pp_eff     = clamp(b_odi * 0.80 + 15)                           # ODI wicket-taking
+        ko_wkts    = clamp(b_odi * 0.70 + 20)
+    elif is_allround:
         dot_ball   = clamp(normalize_avg(odi_avg, "bowler") * 0.85 + 10)
         death_econ = clamp(normalize_avg(odi_avg, "bowler") * 0.9 + 5)
         yorker_f   = clamp(50 + (normalize_avg(odi_avg, "bowler") - 50) * 0.6)
@@ -236,6 +281,9 @@ def build_all_vectors(profiles: Dict[str, Dict]) -> pd.DataFrame:
     rows = []
     for cric_id, profile in profiles.items():
         meta = PLAYER_BASE.get(cric_id, {})
+        # Inject ground-truth archetype so build_vector can read bowling style
+        # (spin vs pace) without depending on a scraped field.
+        profile = {**profile, "archetype_id": meta.get("archetype_id", "A")}
         vec = build_vector(profile)
         row = {
             "cricInfoId":   cric_id,
