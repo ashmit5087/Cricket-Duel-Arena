@@ -35,12 +35,20 @@ export default function QuizResult({ playerName, result, onPlayAgain }: QuizResu
         {result.tier}
       </div>
       
-      <button
-        onClick={onPlayAgain}
-        className="px-8 py-4 uppercase tracking-[0.2em] font-bold text-[11px] bg-[#c0392b] text-white hover:bg-[#e74c3c] transition-colors"
-      >
-        Play Again →
-      </button>
+      <div className="flex flex-col items-center gap-5 w-full max-w-xs">
+        <button
+          onClick={onPlayAgain}
+          className="w-full px-8 py-4 uppercase tracking-[0.2em] font-bold text-[11px] bg-[#c0392b] text-white hover:bg-[#e74c3c] transition-colors"
+        >
+          Play Again →
+        </button>
+        <button
+          onClick={() => document.getElementById('leaderboard')?.scrollIntoView({ behavior: 'smooth' })}
+          className="text-[10px] uppercase tracking-[0.2em] text-[#888] hover:text-white transition-colors border-b border-transparent hover:border-white pb-0.5"
+        >
+          View Dashboard
+        </button>
+      </div>
     </motion.div>
   );
 }

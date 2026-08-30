@@ -28,7 +28,7 @@ export function PlayerAvatar({
 }: PlayerAvatarProps) {
   const [imgError, setImgError] = useState(false);
 
-  const src = getPlayerImageUrl(player.cricInfoId, imageSize);
+  const src = getPlayerImageUrl(player.cricInfoId, imageSize, player.id);
   const showInitials = !src || imgError;
   const colors = ARCHETYPE_AVATAR_COLORS[player.archetypeId] ?? ARCHETYPE_AVATAR_COLORS['H'];
 
@@ -55,7 +55,11 @@ export function PlayerAvatar({
           alt={player.name}
           width={size}
           height={size}
-          onError={() => setImgError(true)}
+          referrerPolicy="no-referrer"
+          onError={(e) => {
+            console.error("Image failed to load:", src);
+            setImgError(true);
+          }}
           className="rounded-full object-cover object-top w-full h-full"
           style={{
             background: colors.bg,
