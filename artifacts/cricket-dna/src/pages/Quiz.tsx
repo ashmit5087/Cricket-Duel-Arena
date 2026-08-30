@@ -9,6 +9,7 @@ import QuizResult, { QuizResultData } from "@/components/quiz/QuizResult";
 import MasterLeaderboard from "@/components/quiz/MasterLeaderboard";
 import GifText from "@/components/ui/gif-text";
 import { ParticleTextEffect } from "@/components/ui/particle-text-effect";
+import { BackgroundPixelStars } from "@/components/ui/background-pixel-stars";
 import { generateQuiz, submitQuiz } from "@/lib/api";
 
 type QuizStage = "cinematic" | "cta" | "name" | "generating" | "quiz" | "result";
@@ -88,7 +89,11 @@ export default function Quiz() {
   const showGallery = stage === "cinematic" || stage === "cta" || stage === "name";
 
   return (
-    <main className="bg-[#0a0a0c] min-h-screen text-white font-sans selection:bg-[#c0392b] selection:text-white">
+    <main className="bg-[#0a0a0c] min-h-screen text-white font-sans selection:bg-[#c0392b] selection:text-white relative">
+      {/* Root background stars for everything except gallery/CTA */}
+      {stage !== "cinematic" && stage !== "cta" && stage !== "name" && (
+        <BackgroundPixelStars />
+      )}
       {/* 1. Cinematic Gallery Section */}
       {showGallery && (
         <section className="relative" style={{ height: "300vh" }}>
@@ -119,7 +124,8 @@ export default function Quiz() {
 
       {/* 2. CTA Section */}
       {showGallery && (
-        <section className="relative z-30 bg-[#0a0a0c] min-h-[80vh] flex flex-col items-center justify-center text-center px-4">
+        <section className="relative z-30 bg-[#0a0a0c] min-h-[80vh] flex flex-col items-center justify-center text-center px-4 overflow-hidden transform-gpu">
+          <BackgroundPixelStars />
           <motion.div
             initial="hidden"
             whileInView="visible"
@@ -168,7 +174,7 @@ export default function Quiz() {
       )}
 
       {stage === "quiz" && quizData && (
-        <section className="min-h-screen py-24 bg-[#0a0a0c]">
+        <section className="relative z-10 min-h-screen py-24 bg-transparent">
           <QuizInterface
             quizData={quizData}
             onSubmit={handleQuizSubmit}
@@ -177,7 +183,7 @@ export default function Quiz() {
       )}
 
       {stage === "result" && resultData && (
-        <section className="min-h-[80vh] bg-[#0a0a0c] flex flex-col pt-24 pb-12">
+        <section className="relative z-10 min-h-[80vh] bg-transparent flex flex-col pt-24 pb-12">
           <QuizResult
             playerName={playerName}
             result={resultData}
@@ -189,7 +195,7 @@ export default function Quiz() {
       {/* 3. Master Leaderboard */}
       <section
         id="leaderboard"
-        className="relative min-h-screen w-full px-6 py-24 bg-[#0a0a0c] border-t border-white/5"
+        className="relative z-10 min-h-screen w-full px-6 py-24 bg-transparent border-t border-white/5"
       >
         <div className="mx-auto w-full max-w-5xl">
           <MasterLeaderboard currentPlayerName={playerName} />
