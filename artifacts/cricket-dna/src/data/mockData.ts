@@ -107,6 +107,8 @@ export const KOHLI_CAREER = [
   { year: 2022, test: 26.5, odi: 27.4, t20: 55.7 },
   { year: 2023, test: 55.6, odi: 72.4, t20: 58.9 },
   { year: 2024, test: 46.2, odi: 68.0, t20: null },
+  { year: 2025, test: 50.8, odi: 74.6, t20: null },
+  { year: 2026, test: 48.3, odi: 71.2, t20: null },
 ];
 
 export const KOHLI_2022_KNOCK: Array<{ over: number; ball: number; type: 'dot' | 'single' | 'two' | 'three' | 'four' | 'six' | 'wicket'; desc: string; runs: number }> = [

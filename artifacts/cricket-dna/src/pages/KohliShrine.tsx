@@ -671,7 +671,7 @@ function CareerArc({ careerArc }: { careerArc: { year: number; test: number | nu
         <div className="mb-10">
           <div className="flex items-center gap-3 mb-2">
             <div className="h-px w-5 bg-[#d4a500]" />
-            <span className="text-[8px] uppercase tracking-[0.35em] text-[#d4a500]">Career Arc · 2008–2024</span>
+            <span className="text-[8px] uppercase tracking-[0.35em] text-[#d4a500]">Career Arc · 2008–2026</span>
           </div>
           <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "clamp(38px,6vw,64px)", letterSpacing: "0.04em", lineHeight: 1 }} className="text-white mb-3">
             Consistency Is His Weapon
@@ -822,8 +822,8 @@ function RecordWall({ recordsOverride }: { recordsOverride?: { value: string; la
     ? recordsOverride.map((r, i) => ({
       value: r.value,
       label: r.label,
-      badge: "Live",
-      sub: "Updated stats",
+      badge: "Current",
+      sub: "Latest stats",
       color: i % 2 === 0 ? "#c0392b" : "#d4a500",
       context: r.context,
     }))

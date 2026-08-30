@@ -183,7 +183,6 @@ function HeroSection() {
             { value: liveOdiHundreds != null ? String(liveOdiHundreds) : "—", label: "ODI Centuries" },
             { value: liveOdiAvg      != null ? liveOdiAvg.toFixed(1)      : "—", label: "ODI Average" },
             { value: liveIntlTotal > 0 ? liveIntlTotal.toString() : "500+", label: "Int'l Matches" },
-            { value: liveMatchCount > 0 ? String(liveMatchCount) : "—", label: "Live Now" },
           ].map((s) => (
             <div key={s.label} data-testid={`stat-${s.label}`}>
               <div
@@ -218,7 +217,6 @@ function HeroSection() {
                 style={{ borderColor: "rgba(192,57,43,0.35)", background: "rgba(192,57,43,0.08)", color: "#f0e6d8" }}
               >
                 <span className="relative flex h-1.5 w-1.5">
-                  <span className="absolute inline-flex h-full w-full rounded-full bg-[#c0392b] opacity-75 animate-ping" />
                   <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#c0392b]" />
                 </span>
                 {formatMatchSlug(m.match)}

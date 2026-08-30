@@ -64,7 +64,7 @@ export function Navbar() {
         <Link href="/">
           <div className="flex items-center gap-2.5 sm:gap-3 cursor-pointer group">
             <div className="relative w-2.5 h-2.5 shrink-0">
-              <div className="w-full h-full rounded-full bg-[#c0392b] animate-pulse" />
+              <div className="w-full h-full rounded-full bg-[#c0392b]" />
               <div
                 className="absolute inset-0 rounded-full blur-[4px] opacity-70 group-hover:opacity-100 transition-opacity"
                 style={{ background: "#c0392b" }}
@@ -119,11 +119,8 @@ export function Navbar() {
                 style={{ borderColor: "rgba(192,57,43,0.35)", color: "#f0e6d8", background: "rgba(192,57,43,0.08)" }}
                 data-testid="navbar-live-indicator"
               >
-                <span className="relative flex h-1.5 w-1.5">
-                  <span className="absolute inline-flex h-full w-full rounded-full bg-[#c0392b] opacity-75 animate-ping" />
-                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#c0392b]" />
-                </span>
-                {liveCount} Live
+                <span className="inline-flex h-1.5 w-1.5 rounded-full bg-[#c0392b]" />
+                {liveCount} On Now
               </div>
             </Link>
           )}
